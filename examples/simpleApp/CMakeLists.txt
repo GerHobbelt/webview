@@ -7,6 +7,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../.. ${CMAKE_CURRENT_BINARY_DIR}/w
 
 add_executable(simpleApp WIN32 MACOSX_BUNDLE simpleApp.cc)
 
+set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
+
 
 #OSX
 if(APPLE)
@@ -21,7 +23,7 @@ message("compiling   simpleApp for WIN")
 set(CMAKE_INSTALL_DEBUG_LIBRARIES TRUE)
 set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
 include(InstallRequiredSystemLibraries)
-set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
+
 
 # target_compile_options(simpleApp PUBLIC /MT$<$<CONFIG:Debug>:d>)
 # target_link_options(simpleApp PUBLIC /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT$<$<CONFIG:Debug>:D>)
@@ -31,8 +33,15 @@ endif()
 
 target_link_libraries(simpleApp PUBLIC webview)
 
+install(TARGETS simpleApp
+        CONFIGURATIONS Debug
+        RUNTIME DESTINATION dist/Debug
+        BUNDLE DESTINATION  dist/Debug
+        )
 
-install(TARGETS simpleApp 
-  RUNTIME DESTINATION ${CONFIG}/bin
-  BUNDLE  DESTINATION bin
-  )
+install(TARGETS simpleApp
+        CONFIGURATIONS Release
+        RUNTIME DESTINATION dist/Release
+        BUNDLE DESTINATION dist/Release
+        )
+
