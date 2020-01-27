@@ -23,11 +23,11 @@ install:
 build_script:
   - mkdir build && cd build
   - mkdir Debug && cd Debug
-  - cmake -DCMAKE_BUILD_TYPE=Release ../../examples/simpleApp
-  - cmake --build . && cmake --install . 
+  - cmake ../../examples/simpleApp
+  - cmake --build . --config Debug && cmake --install . --config Debug 
   - cd .. && mkdir Release && cd Release
-  - cmake -DCMAKE_BUILD_TYPE=Release ../../examples/simpleApp 
-  - cmake --build . && cmake --install .
+  - cmake ../../examples/simpleApp 
+  - cmake --build . --config Release && cmake --install . --config Release
   - cd ../..
   - 7z a simpleAppBuild.zip build/*
 
