@@ -13,8 +13,8 @@ set_target_properties(simpleApp PROPERTIES
                       )
 
 #WIN
-set_property(TARGET simpleApp PROPERTY
-  MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
+target_compile_options(simpleApp PUBLIC/PRIVATE /MT)
+target_link_options(simpleApp PUBLIC/PRIVATE /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT)
 
 target_link_libraries(simpleApp PUBLIC webview)
