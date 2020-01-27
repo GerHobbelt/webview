@@ -8,13 +8,16 @@ add_executable(simpleApp WIN32 MACOSX_BUNDLE simpleApp.cc)
 
 
 #OSX
+if(APPLE)
 set_target_properties(simpleApp PROPERTIES
                       MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
                       )
 
 #WIN
+elseif(WIN32)
+target_compile_options(simpleApp PUBLIC /MT)
+target_link_options(simpleApp PUBLIC /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT)
 
-target_compile_options(simpleApp PUBLIC/PRIVATE /MT)
-target_link_options(simpleApp PUBLIC/PRIVATE /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT)
+endif()
 
 target_link_libraries(simpleApp PUBLIC webview)
