@@ -22,6 +22,7 @@ elseif(WIN32)
 message("compiling   simpleApp for WIN")
 set(CMAKE_INSTALL_DEBUG_LIBRARIES TRUE)
 set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION dist)
 include(InstallRequiredSystemLibraries)
 
 
@@ -34,16 +35,8 @@ endif()
 target_link_libraries(simpleApp PUBLIC webview)
 
 install(TARGETS simpleApp
-        CONFIGURATIONS Debug
-        RUNTIME DESTINATION dist/Debug
-        BUNDLE DESTINATION  dist/Debug
-        LIBRARY DESTINATION dist/Debug
-        )
-
-install(TARGETS simpleApp
-        CONFIGURATIONS Release
-        RUNTIME DESTINATION dist/Release
-        BUNDLE DESTINATION dist/Release
-        LIBRARY DESTINATION dist/Release
+        RUNTIME DESTINATION dist
+        BUNDLE DESTINATION  dist
+        LIBRARY DESTINATION dist
         )
 
