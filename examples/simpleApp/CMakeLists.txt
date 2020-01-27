@@ -20,6 +20,7 @@ set(CMAKE_INSTALL_DEBUG_LIBRARIES 1)
 set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
 
 include(${CMAKE_ROOT}/Modules/InstallRequiredSystemLibraries.cmake)
+
 target_compile_options(simpleApp PUBLIC /MT$<$<CONFIG:Debug>:d>)
 target_link_options(simpleApp PUBLIC /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT$<$<CONFIG:Debug>:D>)
 
