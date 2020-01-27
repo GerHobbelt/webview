@@ -167,7 +167,14 @@ static void test_inject_css() {
   assert(results[0] == "4px");
 }
 
-int main() {
+
+#ifdef _WIN32
+int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+                     LPSTR lpCmdLine, int nCmdShow)
+#else
+int main()
+#endif
+{
   test_minimal();
   test_window_size();
   test_inject_js();
