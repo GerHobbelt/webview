@@ -15,8 +15,8 @@ set_target_properties(simpleApp PROPERTIES
 
 #WIN
 elseif(WIN32)
-target_compile_options(simpleApp PUBLIC /MT)
-target_link_options(simpleApp PUBLIC /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT)
+target_compile_options(simpleApp PUBLIC /MT$<$<CONFIG:Debug>:d>)
+target_link_options(simpleApp PUBLIC /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT$<$<CONFIG:Debug>:D>)
 
 endif()
 
