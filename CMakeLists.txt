@@ -15,7 +15,7 @@ elseif(WIN32)
 		DESTINATION .
 		FILES_MATCHING PATTERN "*.dll"
 	)
-	target_include_directories(VermuthApp PUBLIC script/)
+	set(WEBVIEW_COMPILE_INCS script/)
 else()
 	set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_GTK=1")
 	find_package(PkgConfig REQUIRED)
