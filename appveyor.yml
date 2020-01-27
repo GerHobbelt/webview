@@ -23,5 +23,11 @@ install:
 build_script:
   - mkdir build
   - cd build
-  - cmake ..
+  - cmake ../examples/simpleApp
   - cmake --build .
+  - cd ..
+  - 7z a simpleAppBuild.zip build/*
+
+artifacts:
+  - path: simpleAppBuild.zip
+    name: simpleAppBuild
