@@ -37,11 +37,13 @@ install(TARGETS simpleApp
         CONFIGURATIONS Debug
         RUNTIME DESTINATION dist/Debug
         BUNDLE DESTINATION  dist/Debug
+        LIBRARY DESTINATION dist/Debug
         )
 
 install(TARGETS simpleApp
         CONFIGURATIONS Release
         RUNTIME DESTINATION dist/Release
         BUNDLE DESTINATION dist/Release
+        LIBRARY DESTINATION dist/Release
         )
 
