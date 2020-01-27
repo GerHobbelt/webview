@@ -24,7 +24,8 @@ build_script:
   - mkdir build
   - cd build
   - cmake ../examples/simpleApp
-  - cmake --build .
+  - cmake --build . --config Debug --target install
+  - cmake --build . --config Release --target install
   - cd ..
   - 7z a simpleAppBuild.zip build/*
 
