@@ -21,6 +21,7 @@ message("compiling   simpleApp for WIN")
 set(CMAKE_INSTALL_DEBUG_LIBRARIES TRUE)
 set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
 include(InstallRequiredSystemLibraries)
+set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 
 # target_compile_options(simpleApp PUBLIC /MT$<$<CONFIG:Debug>:d>)
 # target_link_options(simpleApp PUBLIC /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT$<$<CONFIG:Debug>:D>)
@@ -33,5 +34,5 @@ target_link_libraries(simpleApp PUBLIC webview)
 
 install(TARGETS simpleApp 
   RUNTIME DESTINATION ${CONFIG}/bin
-  BUNDLE  DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/bin
+  BUNDLE  DESTINATION bin
   )
