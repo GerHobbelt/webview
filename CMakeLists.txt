@@ -33,9 +33,3 @@ find_package(Threads)
 target_link_libraries(webview_test PRIVATE webview ${CMAKE_THREAD_LIBS_INIT})
 enable_testing ()
 add_test(NAME webview_test COMMAND webview_test)
-
-
-#build simpleApp
-#add_subdirectory(examples/simpleApp)
-# add_executable(simpleApp WIN32 MACOSX_BUNDLE simpleApp.cc)
-# target_link_libraries(simpleApp PRIVATE webview)
