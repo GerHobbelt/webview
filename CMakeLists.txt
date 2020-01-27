@@ -1,13 +1,21 @@
 cmake_minimum_required(VERSION 2.8)
 
 project(webview)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
 	set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_COCOA=1")
 	set(WEBVIEW_LIBS "-framework WebKit")
 elseif(WIN32)
-	set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_WINAPI=1")
+	set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_EDGE=1")
 	set(WEBVIEW_LIBS "ole32 comctl32 oleaut32 uuid")
+	install(
+		DIRECTORY "dll/x64/"
+		DESTINATION .
+		FILES_MATCHING PATTERN "*.dll"
+	)
+	target_include_directories(VermuthApp PUBLIC script/)
 else()
 	set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_GTK=1")
 	find_package(PkgConfig REQUIRED)
@@ -17,8 +25,8 @@ else()
 	set(WEBVIEW_LIBS ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
 endif()
 
-add_library(webview ${CMAKE_CURRENT_BINARY_DIR}/webview.c)
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/webview.c "#define WEBVIEW_IMPLEMENTATION\n#include <webview.h>")
+add_library(webview ${CMAKE_CURRENT_BINARY_DIR}/webview.cpp)
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/webview.cpp "#define WEBVIEW_IMPLEMENTATION\n#include <webview.h>")
 target_include_directories(webview PUBLIC ${PROJECT_SOURCE_DIR} ${WEBVIEW_COMPILE_INCS})
 target_compile_definitions(webview PUBLIC ${WEBVIEW_COMPILE_DEFS})
 target_compile_options(webview PRIVATE ${WEBVIEW_COMPILE_OPTS})
