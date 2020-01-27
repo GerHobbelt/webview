@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 2.8)
 
 project(webview)
 
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(APPLE)
 	set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_COCOA=1")
 	set(WEBVIEW_LIBS "-framework WebKit")
@@ -30,3 +33,9 @@ find_package(Threads)
 target_link_libraries(webview_test PRIVATE webview ${CMAKE_THREAD_LIBS_INIT})
 enable_testing ()
 add_test(NAME webview_test COMMAND webview_test)
+
+
+#build simpleApp
+#add_subdirectory(examples/simpleApp)
+# add_executable(simpleApp WIN32 MACOSX_BUNDLE simpleApp.cc)
+# target_link_libraries(simpleApp PRIVATE webview)

@@ -12,14 +12,17 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main()
 #endif
 {
-  webview::webview w(true, nullptr);
-  w.set_title("App");
-  w.set_size(1080, 720, WEBVIEW_HINT_NONE);
-  w.set_size(300, 200, WEBVIEW_HINT_MIN);
+  struct webview w = {};
+  w.title = "simpleApp";
+  w.url ="http://localhost:8081";
+  w.width = 480;
+  w.height = 320;
+  w.resizable = 1;
+  w.debug=true;
+  webview_init(&w);
+  while (webview_loop(&w, 1) == 0) {
+  }
+  webview_exit(&w);
   
-
-  w.navigate("http://localhost:8081");
- 
-  w.run();
   return 0;
 }
