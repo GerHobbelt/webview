@@ -1,0 +1,19 @@
+
+environment:
+   matrix:
+      - PLATFORM: x64
+        COMPILER: "Visual Studio 14 2015 Win64"
+      - PLATFORM: Win32
+        COMPILER: "Visual Studio 14 2015"
+
+os: Visual Studio 2015
+
+    
+
+build_script:
+    - script/build.bat
+
+notifications:
+
+  - provider: Email
+    on_build_status_changed: false
