@@ -32,6 +32,6 @@ target_link_libraries(simpleApp PUBLIC webview)
 
 
 install(TARGETS simpleApp 
-  RUNTIME DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/bin
+  RUNTIME DESTINATION ${CONFIG}/bin
   BUNDLE  DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/bin
   )
