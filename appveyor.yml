@@ -23,5 +23,5 @@ install:
 build_script:
   - mkdir build
   - cd build
-  - cmake -G "%CMAKE_GENERATOR% Win64" -DCMAKE_BUILD_TYPE=%CONFIGURATION% .. # Flatbuffers doesn't install flatc other than in Release.
-  - cmake --build . --target install --config %CONFIGURATION%
+  - cmake ..
+  - cmake --build .
