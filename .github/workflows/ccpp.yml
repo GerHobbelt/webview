@@ -33,6 +33,7 @@ jobs:
     - name: install
       run: cd build && cmake --install . --config Release
     - uses: actions/upload-artifact@v1
+      if: always()
       with:
         name: build_osx
         path: build/
