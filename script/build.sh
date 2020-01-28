@@ -28,18 +28,22 @@ else
 	echo "SKIP: Linting (clang-tidy not installed)"
 fi
 
+mkdir -p build
+
 echo "Building example"
-c++ main.cc $FLAGS -o webview
+c++ main.cc $FLAGS -o build/webview
 
 echo "Building test app"
-c++ webview_test.cc $FLAGS -o webview_test
+c++ webview_test.cc $FLAGS -o build/webview_test
 
-echo "Running tests"
-./webview_test
 
-if command -v go >/dev/null 2>&1 ; then
-	echo "Running Go tests"
-	CGO_ENABLED=1 go test
-else
-	echo "SKIP: Go tests"
-fi
+
+# echo "Running tests"
+# ./build/webview_test
+
+# if command -v go >/dev/null 2>&1 ; then
+# 	echo "Running Go tests"
+# 	CGO_ENABLED=1 go test
+# else
+# 	echo "SKIP: Go tests"
+# fi
