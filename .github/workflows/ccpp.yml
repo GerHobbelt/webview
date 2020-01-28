@@ -3,8 +3,7 @@ name: C/C++ CI
 on: [push]
 
 jobs:
-  build:
-
+  build_ubuntu:
     runs-on: ubuntu-latest
     
     steps:
@@ -20,4 +19,39 @@ jobs:
     - uses: actions/upload-artifact@v1
       with:
         name: build_linux
+        path: build/
+  
+  build_osx:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: configure
+      run:  mkdir build && cd build && cmake ../examples/simpleApp
+    - name: make
+      run: cd build && cmake --build . --config Release 
+    - name: install
+      run: cd build && cmake --install . --config Release
+    - uses: actions/upload-artifact@v1
+      with:
+        name: build_osx
+        path: build/
+  
+  build_win:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: configure
+      run:  mkdir build && cd build && cmake ../examples/simpleApp
+      shell: bash
+    - name: make
+      run: cd build && cmake --build . --config Release 
+      shell: bash
+    - name: install
+      run: cd build && cmake --install . --config Release
+      shell: bash
+    - uses: actions/upload-artifact@v1
+      with:
+        name: build_win
         path: build/
