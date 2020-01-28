@@ -27,7 +27,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: configure
-      run:  mkdir build && cd build && cmake ../examples/simpleApp
+      run:  mkdir build && cd build && cmake ../examples/simpleApp -G"Xcode"
     - name: make
       run: cd build && cmake --build . --config Release
     - name: install

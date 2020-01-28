@@ -4,11 +4,16 @@ project(webview)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/webview.c "#define WEBVIEW_IMPLEMENTATION\n#include <webview.h>")
+add_library(webview ${CMAKE_CURRENT_BINARY_DIR}/webview.c)
+
 
 if(APPLE)
 	set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_COCOA=1")
 	set(WEBVIEW_LIBS "-framework WebKit")
-	set(CMAKE_XCODE_ATTRIBUTE_ENABLE_STRICT_OBJC_MSGSEND "NO")
+	set(CMAKE_XCODE_ATTRIBUTE_ENABLE_STRICT_OBJC_MSGSEND NO) #seems to not work
+	set_property (TARGET webview PROPERTY XCODE_ATTRIBUTE_ENABLE_STRICT_OBJC_MSGSEND NO)
+
 	set(CMAKE_VERBOSE_MAKEFILE ON)
 elseif(WIN32)
 	set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_WINAPI=1")
@@ -22,13 +27,13 @@ else()
 	set(WEBVIEW_LIBS ${GTK3_LIBRARIES} ${WEBKIT2_LIBRARIES})
 endif()
 
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/webview.c "#define WEBVIEW_IMPLEMENTATION\n#include <webview.h>")
-add_library(webview ${CMAKE_CURRENT_BINARY_DIR}/webview.c)
 
 target_include_directories(webview PUBLIC ${PROJECT_SOURCE_DIR} ${WEBVIEW_COMPILE_INCS})
 target_compile_definitions(webview PUBLIC ${WEBVIEW_COMPILE_DEFS})
 target_compile_options(webview PUBLIC ${WEBVIEW_COMPILE_OPTS})
 target_link_libraries(webview ${WEBVIEW_LIBS})
+
+
 
 # add_executable(webview_test WIN32 MACOSX_BUNDLE webview_test.cc)
 # set_target_properties(webview_test PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
