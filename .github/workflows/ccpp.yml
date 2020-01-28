@@ -14,6 +14,6 @@ jobs:
     - name: configure
       run:  mkdir build && cd build && cmake ../examples/simpleApp
     - name: make
-      run: cmake --build . --config Release 
+      run: cd build && cmake --build . --config Release 
     - name: install
-      run: cmake --install . --config Release
+      run: cd build && cmake --install . --config Release
