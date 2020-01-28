@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(APPLE)
 	# set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_COCOA=1")
+	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)
 	set(WEBVIEW_LIBS "-framework WebKit")
 elseif(WIN32)
 	# set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_EDGE=1")# no need
@@ -34,8 +35,9 @@ target_link_libraries(webview ${WEBVIEW_LIBS})
 
 
 add_executable(main WIN32 MACOSX_BUNDLE main.cc)
-set_target_properties(main PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+set_target_properties(main PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
 target_link_libraries(main PRIVATE webview ${CMAKE_THREAD_LIBS_INIT})
+
 # add_executable(webview_test WIN32 MACOSX_BUNDLE webview_test.cc)
 # set_target_properties(webview_test PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
 # find_package(Threads)
