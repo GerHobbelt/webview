@@ -13,9 +13,11 @@ set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR})
 #OSX
 if(APPLE)
 message(STATUS "compiling  simpleApp  for OSX")
+
 set_target_properties(simpleApp PROPERTIES
                       MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in
                       )
+set(CMAKE_XCODE_ATTRIBUTE_ENABLE_STRICT_OBJC_MSGSEND "NO")
 
 #WIN
 elseif(WIN32)
