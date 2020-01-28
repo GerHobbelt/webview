@@ -35,6 +35,7 @@ target_link_libraries(webview ${WEBVIEW_LIBS})
 
 add_executable(main WIN32 MACOSX_BUNDLE main.cc)
 set_target_properties(main PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
+target_link_libraries(main PRIVATE webview ${CMAKE_THREAD_LIBS_INIT})
 # add_executable(webview_test WIN32 MACOSX_BUNDLE webview_test.cc)
 # set_target_properties(webview_test PROPERTIES CXX_STANDARD 11 CXX_STANDARD_REQUIRED YES CXX_EXTENSIONS NO)
 # find_package(Threads)

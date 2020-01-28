@@ -8,9 +8,9 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install libwebkit2gtk-4.0-dev xvfb -y
+        run: sudo apt-get update && sudo apt-get install libwebkit2gtk-4.0-dev -y
       - name: Build and run tests
-        run: xvfb-run ./script/build.sh
+        run: mkdir -p build && cd build && cmake .. && cmake --build . #./script/build.sh#run: xvfb-run ./script/build.sh
       - uses: actions/upload-artifact@v1
         with:
           name: build_linux
@@ -20,8 +20,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v1
-      - name: Build and run tests
-        run: ./script/build.sh
+      - name: Build 
+        run: mkdir -p build && cd build && cmake .. && cmake --build . #./script/build.sh
       - uses: actions/upload-artifact@v1
         with:
           name: build_macos
@@ -31,8 +31,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v1
-      - name: Build and run tests
-        run: ./script/build.bat
+      - name: Build 
+        run: mkdir -p build && cd build && cmake .. && cmake --build . # run: ./script/build.bat
+        shell: bash
       - uses: actions/upload-artifact@v1
         with:
           name: build_windows

@@ -16,7 +16,7 @@ int main()
   w.set_title("App");
   w.set_size(1080, 800, WEBVIEW_HINT_NONE);
   w.set_size(180, 120, WEBVIEW_HINT_MIN);
-  w.navigate(R"http://localhost:8081");
+  w.navigate("http://localhost:8081");
   w.run();
   return 0;
 }
