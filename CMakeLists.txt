@@ -16,7 +16,12 @@ elseif(WIN32)
 		DESTINATION .
 		FILES_MATCHING PATTERN "*.dll"
 	)
-	set(WEBVIEW_COMPILE_INCS script/)
+	install(
+		DIRECTORY "script/Microsoft.Web.WebView2.0.8.355/build/native/x64"
+		DESTINATION .
+		FILES_MATCHING PATTERN "*.dll.lib"
+	)
+	set(WEBVIEW_COMPILE_INCS script/ script/Microsoft.Web.WebView2.0.8.355/build/native/include)
 else()
 	# set(WEBVIEW_COMPILE_DEFS "-DWEBVIEW_GTK=1")
 	find_package(PkgConfig REQUIRED)
