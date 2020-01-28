@@ -29,7 +29,7 @@ include(InstallRequiredSystemLibraries)
 # target_compile_options(simpleApp PUBLIC /MT$<$<CONFIG:Debug>:d>)
 # target_link_options(simpleApp PUBLIC /INCREMENTAL:NO /NODEFAULTLIB:MSVCRT$<$<CONFIG:Debug>:D>)
 else()
-message("compiling simpleApp for Unknown")
+message("compiling simpleApp for Unix?")
 endif()
 
 target_link_libraries(simpleApp PUBLIC webview)

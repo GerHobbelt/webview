@@ -17,3 +17,7 @@ jobs:
       run: cd build && cmake --build . --config Release 
     - name: install
       run: cd build && cmake --install . --config Release
+    - uses: actions/upload-artifact@v1
+    with:
+      name: build_linux
+      path: build/
