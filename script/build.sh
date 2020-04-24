@@ -33,8 +33,8 @@ mkdir -p build
 echo "Building example"
 c++ main.cc $FLAGS -o build/webview
 
-echo "Building test app"
-c++ webview_test.cc $FLAGS -o build/webview_test
+# echo "Building test app"
+# c++ webview_test.cc $FLAGS -o build/webview_test
 
 
 
