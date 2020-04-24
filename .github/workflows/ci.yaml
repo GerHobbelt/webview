@@ -57,7 +57,7 @@ jobs:
 
       - uses: actions/download-artifact@v1
         with:
-          name: build_windows
+          name: build_linux
       - run: zip -r build_linux.zip build_linux/
 
 
