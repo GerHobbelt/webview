@@ -14,6 +14,12 @@ jobs:
         with:
           name: build_linux
           path: ./build/
+      - name: Upload the artifacts
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: 'build_linux'
 
   build-macos:
     runs-on: macos-latest
@@ -25,6 +31,12 @@ jobs:
         with:
           name: build_macos
           path: ./build/
+      - name: Upload the artifacts
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: 'build_macos'
 
   build-windows:
     runs-on: windows-latest
@@ -36,3 +48,9 @@ jobs:
         with:
           name: build_windows
           path: ./build/
+      - name: Upload the artifacts
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: 'build_windows'
