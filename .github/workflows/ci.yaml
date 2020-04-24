@@ -48,17 +48,17 @@ jobs:
       - uses: actions/download-artifact@v1
         with:
           name: build_macos
-      - run: zip -r build_macos.zip build_macos/
+      - run: cd  build_macos && zip -r ../build_macos.zip .
 
       - uses: actions/download-artifact@v1
         with:
           name: build_windows
-      - run: zip -r build_windows.zip build_windows/
+      - run: cd build_windows   && zip -r ../build_windows.zip .
 
       - uses: actions/download-artifact@v1
         with:
           name: build_linux
-      - run: zip -r build_linux.zip build_linux/
+      - run: cd build_linux   && zip -r ../build_linux.zip .
 
 
       - name: Create Release
