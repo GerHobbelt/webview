@@ -5,6 +5,15 @@
 
 #include <iostream>
 
+struct Settings{
+  bool debug = true;
+  std::string title = "App";
+  int defaultWidth = 1080;
+  int defaultHeight = 800;
+  std::string url="http://localhost:3000";
+};
+
+
 #ifdef _WIN32
 int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
                      LPSTR lpCmdLine, int nCmdShow)
@@ -12,11 +21,14 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main()
 #endif
 {
-  webview::webview w(true, nullptr);
-  w.set_title("App");
-  w.set_size(1080, 800, WEBVIEW_HINT_NONE);
+  Settings settings;
+
+
+  webview::webview w(settings.debug, nullptr);
+  w.set_title(settings.title);
+  w.set_size(settings.defaultWidth, settings.defaultHeight, WEBVIEW_HINT_NONE);
   w.set_size(180, 120, WEBVIEW_HINT_MIN);
-  w.navigate("http://localhost:8081");
+  w.navigate(settings.url);
   w.run();
   return 0;
 }
