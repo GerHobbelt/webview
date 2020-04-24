@@ -13,7 +13,7 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: build_linux
-          path: ./
+          path: ./build/webview
 
   build-macos:
     runs-on: macos-latest
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: build_macos
-          path: ./
+          path: ./build/webview
 
   build-windows:
     runs-on: windows-latest
@@ -35,4 +35,4 @@ jobs:
       - uses: actions/upload-artifact@v1
         with:
           name: build_windows
-          path: ./
+          path: ./build
