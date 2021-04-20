@@ -1223,13 +1223,13 @@ public:
 
   void navigate(const std::string url) {
     if (url == "") {
-      browser_engine::navigate("data:text/html," +
+      browser_engine::navigate("data:text/html;charset=utf-8," +
                                url_encode("<html><body>Hello</body></html>"));
       return;
     }
     std::string html = html_from_uri(url);
     if (html != "") {
-      browser_engine::navigate("data:text/html," + url_encode(html));
+      browser_engine::navigate("data:text/html;charset=utf-8," + url_encode(html));
     } else {
       browser_engine::navigate(url);
     }
