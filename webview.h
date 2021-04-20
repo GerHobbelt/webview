@@ -192,8 +192,8 @@ inline std::string url_decode(const std::string st) {
 }
 
 inline std::string html_from_uri(const std::string s) {
-  if (s.substr(0, 15) == "data:text/html,") {
-    return url_decode(s.substr(15));
+  if (s.substr(0, 29) == "data:text/html;charset=utf-8,") {
+    return url_decode(s.substr(29));
   }
   return "";
 }
