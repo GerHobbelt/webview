@@ -670,24 +670,6 @@ public:
                                              "numberWithBool:"_sel, 1),
         "fullScreenEnabled"_str);
 
-    // Equivalent Obj-C:
-    // [[config preferences] setValue:@YES forKey:@"javaScriptCanAccessClipboard"];
-    ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "javaScriptCanAccessClipboard"_str);
-
-    // Equivalent Obj-C:
-    // [[config preferences] setValue:@YES forKey:@"DOMPasteAllowed"];
-    ((id(*)(id, SEL, id, id))objc_msgSend)(
-        ((id(*)(id, SEL))objc_msgSend)(config, "preferences"_sel),
-        "setValue:forKey:"_sel,
-        ((id(*)(id, SEL, BOOL))objc_msgSend)("NSNumber"_cls,
-                                             "numberWithBool:"_sel, 1),
-        "DOMPasteAllowed"_str);
-
     ((void (*)(id, SEL, CGRect, id))objc_msgSend)(
         m_webview, "initWithFrame:configuration:"_sel, CGRectMake(0, 0, 0, 0),
         config);
