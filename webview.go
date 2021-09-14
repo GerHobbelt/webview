@@ -1,4 +1,4 @@
-package webview
+package webviou
 
 /*
 #cgo linux openbsd freebsd CXXFLAGS: -DWEBVIEW_GTK -std=c++11

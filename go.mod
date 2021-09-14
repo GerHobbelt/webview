@@ -1,3 +1,3 @@
-module github.com/rribou/webview
+module github.com/rribou/webviou
 
 go 1.13
