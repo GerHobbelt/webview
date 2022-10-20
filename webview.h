@@ -841,7 +841,9 @@ private:
     // Bundled apps have a default activation policy of
     // NSApplicationActivationPolicyRegular while non-bundled apps have a
     // default activation policy of NSApplicationActivationPolicyProhibited.
-    if (!is_app_bundled()) {
+
+    // ================== modified ====================
+    //if (!is_app_bundled()) {
       // "setActivationPolicy:" must be invoked before
       // "activateIgnoringOtherApps:" for activation to work.
       objc::msg_send<void>(app, "setActivationPolicy:"_sel,
@@ -849,7 +851,7 @@ private:
       // Activate the app regardless of other active apps.
       // This can be obtrusive so we only do it when necessary.
       objc::msg_send<void>(app, "activateIgnoringOtherApps:"_sel, YES);
-    }
+    //}
 
     // Main window
     if (!m_parent_window) {
