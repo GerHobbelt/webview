@@ -2049,7 +2049,7 @@ private:
     if (!m_controller || !m_webview) {
       return false;
     }
-    ICoreWebView2Settings6 *settings = nullptr;
+    ICoreWebView2Settings *settings = nullptr;
     auto res = m_webview->get_Settings(&settings);
     if (res != S_OK) {
       return false;
@@ -2058,7 +2058,9 @@ private:
     if (res != S_OK) {
       return false;
     }
-    res = settings->put_IsSwipeNavigationEnabled(FALSE);
+    
+    ICoreWebView2Settings6 *settings6 = (ICoreWebView2Settings6 *)settings;
+    res = settings6->put_IsSwipeNavigationEnabled(FALSE);
     if (res != S_OK) {
       return false;
     }
