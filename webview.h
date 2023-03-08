@@ -2049,7 +2049,7 @@ private:
     if (!m_controller || !m_webview) {
       return false;
     }
-    ICoreWebView2Settings *settings = nullptr;
+    ICoreWebView2Settings6 *settings = nullptr;
     auto res = m_webview->get_Settings(&settings);
     if (res != S_OK) {
       return false;
