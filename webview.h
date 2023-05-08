@@ -1670,7 +1670,8 @@ class webview2_com_handler
     : public ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler,
       public ICoreWebView2CreateCoreWebView2ControllerCompletedHandler,
       public ICoreWebView2WebMessageReceivedEventHandler,
-      public ICoreWebView2PermissionRequestedEventHandler {
+      public ICoreWebView2PermissionRequestedEventHandler,
+      public ICoreWebView2NewWindowRequestedEventHandler {
   using webview2_com_handler_cb_t =
       std::function<void(ICoreWebView2Controller *, ICoreWebView2 *webview)>;
 
@@ -1771,7 +1772,11 @@ public:
     }
     return S_OK;
   }
-
+  HRESULT STDMETHODCALLTYPE Invoke(
+      ICoreWebView2 *sender, ICoreWebView2NewWindowRequestedEventArgs *args) {
+    args->put_Handled(TRUE);    
+    return S_OK;
+  }
   // Checks whether the specified IID equals the IID of the specified type and
   // if so casts the "this" pointer to T and returns it. Returns nullptr on
   // mismatching IIDs.
@@ -2049,6 +2054,7 @@ private:
     if (!m_controller || !m_webview) {
       return false;
     }
+    m_webview->add_NewWindowRequested(m_com_handler, nullptr);
     ICoreWebView2Settings *settings = nullptr;
     auto res = m_webview->get_Settings(&settings);
     if (res != S_OK) {
@@ -2098,6 +2104,7 @@ private:
   ICoreWebView2Controller *m_controller = nullptr;
   webview2_com_handler *m_com_handler = nullptr;
   mswebview2::loader m_webview2_loader;
+  ICoreWebView2NewWindowRequestedEventHandler *new_window_handler = nullptr;
 };
 
 } // namespace detail
