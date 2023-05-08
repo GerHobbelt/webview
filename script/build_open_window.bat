@@ -5,18 +5,31 @@ echo Prepare directories...
 set script_dir=%~dp0
 set script_dir=%script_dir:~0,-1%
 set src_dir=%script_dir%\..
+set native_code_dir=%src_dir%\native
 set build_dir=%script_dir%\..\build
 mkdir "%build_dir%"
 
 echo Webview directory: %src_dir%
 echo Build directory: %build_dir%
+echo Native code directory: %native_code_dir%
 
 :: If you update the nuget package, change its version here
 set nuget_version=1.0.1150.38
 echo Using Nuget Package microsoft.web.webview2.%nuget_version%
-if not exist "%script_dir%\microsoft.web.webview2.%nuget_version%" (
+
+if not exist "nuget.exe" (
 	curl -sSLO https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+)
+
+if not exist "%script_dir%\microsoft.web.webview2.%nuget_version%" (
 	nuget.exe install Microsoft.Web.Webview2 -Version %nuget_version% -OutputDirectory %script_dir% -Source https://api.nuget.org/v3/index.json
+	echo Nuget package installed
+)
+
+set wil_version=1.0.230411.1
+echo Usiung nuget ackage Microsoft.Windows.ImplementationLibrary.%wil_version%
+if not exist "%script_dir%\Microsoft.Windows.ImplementationLibrary.%nuget_version%" (
+	nuget.exe install Microsoft.Windows.ImplementationLibrary -Version %wil_version% -OutputDirectory %script_dir% -Source https://api.nuget.org/v3/index.json
 	echo Nuget package installed
 )
 
@@ -55,16 +68,20 @@ if not exist "%src_dir%\dll\x64\webview.dll" (
 	cl %warning_params% ^
 		/D "WEBVIEW_API=__declspec(dllexport)" ^
 		/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
+		/I "%script_dir%\Microsoft.Windows.ImplementationLibrary.%wil_version%\include" ^
+		/I "%native_code_dir%" ^
 		/std:c++17 /EHsc "/Fo%build_dir%"\ ^
-		"%src_dir%\webview.cc" /link /DLL "/OUT:%src_dir%\dll\x86\webview.dll" || exit /b
+		"%native_code_dir%\webview.cc" "%native_code_dir%\webview_go_glue.c" /link /DLL "/OUT:%src_dir%\dll\x86\webview.dll" || exit /b
 
 	call "%vc_dir%\Common7\Tools\vsdevcmd.bat" -arch=x64 -host_arch=x64
 	echo Building webview.dll ^(x64^)
 	cl %warning_params% ^
 		/D "WEBVIEW_API=__declspec(dllexport)" ^
 		/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
+		/I "%script_dir%\Microsoft.Windows.ImplementationLibrary.%wil_version%\include" ^
+		/I "%native_code_dir%" ^
 		/std:c++17 /EHsc "/Fo%build_dir%"\ ^
-		"%src_dir%\webview.cc" /link /DLL "/OUT:%src_dir%\dll\x64\webview.dll" || exit /b
+		"%native_code_dir%\webview.cc" "%native_code_dir%\webview_go_glue.c" /link /DLL "/OUT:%src_dir%\dll\x64\webview.dll" || exit /b
 )
 if not exist "%build_dir%\webview.dll" (
 	copy "%src_dir%\dll\x64\webview.dll" %build_dir%
@@ -75,32 +92,18 @@ if not exist "%build_dir%\WebView2Loader.dll" (
 
 call "%vc_dir%\Common7\Tools\vsdevcmd.bat" -arch=x64 -host_arch=x64
 
-echo Building C++ examples (x64)
-mkdir "%build_dir%\examples\cpp"
-cl %warning_params% ^
-	/I "%src_dir%" ^
-	/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
-	"%src_dir%\dll\x64\webview.lib" ^
-	/std:c++17 /EHsc "/Fo%build_dir%\examples\cpp"\ ^
-	"%src_dir%\examples\basic.cc" /link "/OUT:%build_dir%\examples\cpp\basic.exe" || exit /b
-cl %warning_params% ^
-	/I "%src_dir%" ^
-	/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
-	"%src_dir%\dll\x64\webview.lib" ^
-	/std:c++17 /EHsc "/Fo%build_dir%\examples\cpp"\ ^
-	"%src_dir%\examples\bind.cc" /link "/OUT:%build_dir%\examples\cpp\bind.exe" || exit /b
 
 echo Building C examples (x64)
 mkdir "%build_dir%\examples\c"
 cl %warning_params% ^
-	/I "%src_dir%" ^
+	/I "%native_code_dir%" ^
 	/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
 	"%src_dir%\dll\x64\webview.lib" ^
 	/std:c++17 /EHsc "/Fo%build_dir%\examples\c"\ ^
 	"%src_dir%\dll\x64\webview.lib" ^
 	"%src_dir%\examples\basic.c" /link "/OUT:%build_dir%\examples\c\basic.exe" || exit /b
 cl %warning_params% ^
-	/I "%src_dir%" ^
+	/I "%native_code_dir%" ^
 	/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
 	"%src_dir%\dll\x64\webview.lib" ^
 	/std:c++17 /EHsc "/Fo%build_dir%\examples\c"\ ^
@@ -108,42 +111,23 @@ cl %warning_params% ^
 	"%src_dir%\examples\open_window.c" /link "/OUT:%build_dir%\examples\c\open_window.exe" || exit /b
 
 cl %warning_params% ^
-	/I "%src_dir%" ^
+	/I "%native_code_dir%" ^
 	/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
 	"%src_dir%\dll\x64\webview.lib" ^
 	/std:c++17 /EHsc "/Fo%build_dir%\examples\c"\ ^
 	"%src_dir%\dll\x64\webview.lib" ^
 	"%src_dir%\examples\bind.c" /link "/OUT:%build_dir%\examples\c\bind.exe" || exit /b
 
-echo Building webview_test.exe (x64)
-cl %warning_params% ^
-	/utf-8 ^
-	/I "%src_dir%" ^
-	/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
-	/std:c++17 /EHsc "/Fo%build_dir%"\ ^
-	"%src_dir%\webview_test.cc" /link "/OUT:%build_dir%\webview_test.exe" || exit /b
-
-echo Setting up environment for Go...
-rem Argument quoting works for Go 1.18 and later but as of 2022-06-26 GitHub Actions has Go 1.17.11.
-rem See https://go-review.googlesource.com/c/go/+/334732/
-rem TODO: Use proper quoting when GHA has Go 1.18 or later.
-set "CGO_CXXFLAGS=-I%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include"
-set CGO_ENABLED=1
+set "CGO_CXXFLAGS=-DWEBVIEW_EDGE -I%native_code_dir% -I%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include -I%script_dir%\wil-1.0.230411.1\include"
+set "CGO_LDFLAGS=-L%src_dir%\dll\x64\ -lwebview -ladvapi32 -lole32 -lshell32 -lshlwapi -luser32 -lversion"
+echo CGO_CXXFLAGS=%CGO_CXXFLAGS%
 
 rem Go needs go.mod to be in the working directory.
 pushd "%src_dir%" || exit /b
 
 echo Building Go examples
 mkdir "%build_dir%\examples\go"
-go build -ldflags="-H windowsgui" -o "%build_dir%\examples\go\basic.exe" examples\basic.go || goto :go_end
-go build -ldflags="-H windowsgui" -o "%build_dir%\examples\go\bind.exe" examples\bind.go || goto :go_end
-
-echo Running tests
-"%build_dir%\webview_test.exe" || goto :go_end
-
-echo Running Go tests
-set "PATH=%PATH%;%src_dir%\dll\x64;%src_dir%\dll\x86"
-go test || goto :go_end
+go build -o "%build_dir%\examples\go\open_window.exe" examples\open_window.go || goto :go_end
 
 :go_end
 set go_error=%errorlevel%

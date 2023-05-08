@@ -8,15 +8,19 @@ package webview
 #cgo darwin LDFLAGS: -framework WebKit
 
 #cgo windows CXXFLAGS: -DWEBVIEW_EDGE -std=c++17
-#cgo windows LDFLAGS: -static -ladvapi32 -lole32 -lshell32 -lshlwapi -luser32 -lversion
+#cgo windows LDFLAGS: -Llib/go_webview/win/x64 -ladvapi32 -lole32 -lshell32 -lshlwapi -luser32 -lversion -lwebview
 
-#include "webview.h"
+#include "native/webview_models.h"
+#include "native/webview_methods.h"
+#include "native/webview_go_glue.h"
 
 #include <stdlib.h>
 #include <stdint.h>
 
-void CgoWebViewDispatch(webview_t w, uintptr_t arg);
-void CgoWebViewBind(webview_t w, const char *name, uintptr_t index);
+// exported mtehods from golang
+extern void c_webviewDispatchGoCallback(void* w);
+extern void c_goOnChildWindowCreatedCallback(int window_id, webview_t window);
+extern void c_webviewBindingGoCallback(webview_t w, char * c1, char * c2, uintptr_t p1);
 */
 import "C"
 import (
@@ -28,7 +32,16 @@ import (
 	"unsafe"
 )
 
+func BindCallbacks() {
+	c_webviewDispatchGoCallback := C._webviewDispatchGoCallback_t(C.c_webviewDispatchGoCallback)
+	c_webviewBindingGoCallback := C._webviewBindingGoCallback_t(C.c_webviewBindingGoCallback)
+	c_goOnChildWindowCreatedCallback := C.cb_ext_child_window_created(C.c_goOnChildWindowCreatedCallback)
+	C.set_webviewDispatchGoCallback(c_webviewDispatchGoCallback)
+	C.set_webviewBindingGoCallback(c_webviewBindingGoCallback)
+	C.webview_set_child_window_callback(c_goOnChildWindowCreatedCallback)
+}
 func init() {
+	BindCallbacks()
 	// Ensure that main.main is called from the main thread
 	runtime.LockOSThread()
 }
@@ -80,12 +93,18 @@ type WebView interface {
 	// SetSize updates native window size. See Hint constants.
 	SetSize(w int, h int, hint Hint)
 
+	// SetSize updates native window size. See Hint constants.
+	SetPositionAndSize(x int, y int, width int, height int, hint Hint)
+
 	// Navigate navigates webview to the given URL. URL may be a properly encoded data.
 	// URI. Examples:
 	// w.Navigate("https://github.com/webview/webview")
 	// w.Navigate("data:text/html,%3Ch1%3EHello%3C%2Fh1%3E")
 	// w.Navigate("data:text/html;base64,PGgxPkhlbGxvPC9oMT4=")
 	Navigate(url string)
+
+	// open window in popup window
+	OpenChildWindow(window_id int, url string)
 
 	// SetHtml sets the webview HTML directly.
 	// Example: w.SetHtml(w, "<h1>Hello</h1>");
@@ -149,6 +168,22 @@ func NewWindow(debug bool, window unsafe.Pointer) WebView {
 	return &webview{w: res}
 }
 
+var childWindowCreatedCallbacks []func(int, WebView)
+
+//export goOnChildWindowCreatedCallback
+func goOnChildWindowCreatedCallback(windowId C.int, window C.webview_t) {
+	instance := &webview{w: window}
+	goWindowId := int(windowId)
+	for _, item := range childWindowCreatedCallbacks {
+		go func() {
+			item(goWindowId, instance)
+		}()
+	}
+}
+func AddChildWindowCallback(callback func(int, WebView)) {
+	childWindowCreatedCallbacks = append(childWindowCreatedCallbacks, callback)
+}
+
 func (w *webview) Destroy() {
 	C.webview_destroy(w.w)
 }
@@ -171,6 +206,13 @@ func (w *webview) Navigate(url string) {
 	C.webview_navigate(w.w, s)
 }
 
+func (w *webview) OpenChildWindow(window_id int, url string) {
+	s := C.CString(url)
+	wid := C.int(window_id)
+	defer C.free(unsafe.Pointer(s))
+	C.webview_navigate_popup(w.w, s, wid)
+}
+
 func (w *webview) SetHtml(html string) {
 	s := C.CString(html)
 	defer C.free(unsafe.Pointer(s))
@@ -185,6 +227,10 @@ func (w *webview) SetTitle(title string) {
 
 func (w *webview) SetSize(width int, height int, hint Hint) {
 	C.webview_set_size(w.w, C.int(width), C.int(height), C.int(hint))
+}
+
+func (w *webview) SetPositionAndSize(x int, y int, width int, height int, hint Hint) {
+	C.webview_set_position_n_size(w.w, C.int(x), C.int(y), C.int(width), C.int(height), C.int(hint))
 }
 
 func (w *webview) Init(js string) {
