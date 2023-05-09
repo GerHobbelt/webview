@@ -1089,6 +1089,7 @@ class webview_provider {
     virtual void set_m_webview2_on_webview_first_inited(
         simple_callback webview_first_inited) = 0;
     virtual int do_init() = 0;
+    virtual void after_window_opened() = 0;
 };
 typedef webview_provider *webview_window_t;
 
@@ -1709,12 +1710,10 @@ class webview2_com_handler
 public:
   webview2_com_handler(HWND hwnd, msg_cb_t msgCb, webview2_com_handler_cb_t cb,
                        create_webview_window_handler create_window_handler,
-                       bool debug, simple_callback webview_inited,
-                       simple_callback after_window_opened)
+                       bool debug, simple_callback webview_inited)
       : m_window(hwnd), m_msgCb(msgCb), m_cb(cb),
         create_window_handler(create_window_handler), debug_mode(debug),
-        m_webview2_on_webview_first_inited(webview_inited),
-        m_after_window_opened(after_window_opened) {}
+        m_webview2_on_webview_first_inited(webview_inited) {}
 
   virtual ~webview2_com_handler() = default;
   webview2_com_handler(const webview2_com_handler &other) = delete;
@@ -1791,7 +1790,7 @@ public:
     m_cb(controller, webview);
     // callback for m_webview2_on_webview_first_inited
     if (this->m_webview2_on_webview_first_inited) {
-      ts_logf("Invoking m_webview2_on_webview_first_inited = %p\n", this->m_webview2_on_webview_first_inited);
+      ts_logf("Invoking m_webview2_on_webview_first_inited\n");
       this->m_webview2_on_webview_first_inited();
     }
     return S_OK;
@@ -1851,14 +1850,15 @@ public:
         hr_result = created_view->Navigate(target_url);
         ts_logf("Is ok go show %ws, succeed = %d \n", target_url,
                 SUCCEEDED(hr_result) ? 1 : 0);
+      } else {
+        args->put_Handled(FALSE);
+        return;
       }
       args->put_NewWindow(created_view);
       args->put_Handled(TRUE);
       deferral->Complete();
-      if (this->m_after_window_opened) {
-        ts_logf("Invoking this->m_after_window_opened \n");
-        this->m_after_window_opened();
-      }
+      ts_logf("Invoking this->m_after_window_opened \n");
+      window_pointer->after_window_opened();
     }; 
     ts_logf("Setting up webview2_on_webview_first_inited callback handler \n");
     window_pointer->set_m_webview2_on_webview_first_inited(callback);
@@ -1928,7 +1928,6 @@ private:
   bool debug_mode;
   create_webview_window_handler create_window_handler;
   simple_callback m_webview2_on_webview_first_inited;
-  simple_callback m_after_window_opened;
 };
 
 class win32_edge_engine: public webview_provider {
@@ -1993,6 +1992,7 @@ public:
       m_window = CreateWindowW(L"webview", L"", WS_OVERLAPPEDWINDOW,
                                CW_USEDEFAULT, CW_USEDEFAULT, 640, 480, nullptr,
                                nullptr, hInstance, nullptr);
+      ts_logf("Created new window %d\n", m_window);
       if (m_window == nullptr) {
         return;
       }
@@ -2113,6 +2113,10 @@ public:
       simple_callback webview_first_inited) {
     this->m_webview2_on_webview_first_inited = webview_first_inited;
   }
+  void after_window_opened() { 
+      ts_logf("Resizing new opened window\n");
+      this->set_size(1024, 768, WEBVIEW_HINT_NONE);
+  }
   /*
   * Let external code to do some setup
   */
@@ -2166,9 +2170,6 @@ public:
     }
     wchar_t userDataFolder[MAX_PATH];
     PathCombineW(userDataFolder, dataPath, currentExeName);
-    ts_logf("Trying to create instance of webview2_com_handler, "
-            "create_new_webview_method_handler = %p, m_webview2_on_webview_first_inited=%p \n",
-            create_new_webview, this->m_webview2_on_webview_first_inited);
     m_com_handler = new webview2_com_handler(
         wnd, cb,
         [&](ICoreWebView2Controller *controller, ICoreWebView2 *webview) {
@@ -2180,14 +2181,12 @@ public:
           webview->AddRef();
           m_controller = controller;
           m_webview = webview;
+          ts_logf("got webview %p for window %p\n", webview, m_window);
           flag.clear();
         },
         create_new_webview, 
             debug, 
-            this->m_webview2_on_webview_first_inited,
-            [this]() { 
-                resize(m_window);
-            }
+            this->m_webview2_on_webview_first_inited
         );
     ts_logf("webview2_com_handler created, now trying to call m_com_handler->set_attempt_handler\n");
     m_com_handler->set_attempt_handler([&] {
