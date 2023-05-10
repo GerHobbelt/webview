@@ -1084,6 +1084,7 @@ using browser_engine = detail::cocoa_wkwebview_engine;
 #include <map>
 #include <stdio.h>
 #include <string>
+#include <regex>
 
 #ifdef _MSC_VER
 #pragma comment(lib, "advapi32.lib")
@@ -1096,83 +1097,157 @@ using browser_engine = detail::cocoa_wkwebview_engine;
 
 namespace webview {
 
+#ifndef WINDOW_ID_PARAM_PREFIX
+#define WINDOW_ID_PARAM_PREFIX "____window_id"
+#endif // !WINDOW_ID_PARAM_PREFIX
 
 typedef std::function<void()> simple_callback;
-std::map<int, void *> __child_webview_engines_map;
+typedef std::map<int, void *>  child_window_map_t;
+
 class webview_provider {
-  public:
-    virtual ICoreWebView2 *webview_instance() = 0;
-    virtual void set_m_webview2_on_webview_first_inited(simple_callback webview_first_inited) = 0;
-    virtual int do_init() = 0;
-    virtual void after_window_opened() = 0;
+private:
+  int window_id = -1;
+  static child_window_map_t *child_webview_map_pointer() {
+    return & (webview_provider::__child_webview_engines_map);
+  }
 
-    static bool child_window_add(int key, void* value) {
-        auto map_instance = __child_webview_engines_map;
-        auto result = map_instance.insert(std::map<int, void *>::value_type(key, value));
-        auto ok = result.second;
-        return ok;
+public:
+  static child_window_map_t __child_webview_engines_map;
+  virtual ICoreWebView2 *webview_instance() = 0;
+  virtual void set_m_webview2_on_webview_first_inited(
+      simple_callback webview_first_inited) = 0;
+  virtual int do_init() = 0;
+  virtual void after_window_opened() = 0;
+  virtual void terminate() = 0;
+  int get_window_id() { return this->window_id; }
+  bool set_window_id(int value) {
+    debug_logf("Trying to update MY window id %d for %p current window_id is %d\n",
+               value, this, this->window_id);
+    // window_id can be set only once
+    if (this->window_id >= 0) {
+      return false;
     }
-
-    static bool child_window_remove(int key) {
-        auto map_instance = __child_webview_engines_map;
-        std::map<int, void *>::iterator item = map_instance.find(key);
-        if (item != map_instance.end()) {
-            auto remove_result = map_instance.erase(item);
-        }
+    this->window_id = value;
+    return true;
+  }
+  static bool child_window_add(int key, void *value) {
+    debug_logf("Trying adding window id %d, window pointer %p\n", key, value);
+    auto map_instance = child_webview_map_pointer();
+    auto result = map_instance->insert(std::pair(key, value));
+    auto ok = result.second;
+    // need to update
+    if (ok) {
+      debug_logf("Added window id %d = %p\n", key, value);
+    } else {
+      debug_logf("Failed to insert %d=%p into map, try updating\n", key, value);
+      std::map<int, void *>::iterator item = map_instance->find(key);
+      if (item != map_instance->end()) {
+        debug_logf("Updated window id %d = %p, total = %d\n", key, value, (int)map_instance->size());
+        item->second = value;
         return true;
+      }
     }
+    debug_logf("Total items is %d\n", (int)map_instance->size());
+    return ok;
+  }
 
-    static void* child_window_get(int key) {
-        auto map_instance = __child_webview_engines_map;
-        std::map<int, void *>::iterator item = map_instance.find(key);
-        if (item != map_instance.end()) {
-            return item->second;
-        }
-        return nullptr;
+  static bool child_window_remove(int key) {
+    debug_logf("Trying to remove window id %d from map\n", key);
+    auto map_instance = child_webview_map_pointer();
+    std::map<int, void *>::iterator item = map_instance->find(key);
+    if (item != map_instance->end()) {
+      auto remove_result = map_instance->erase(item);
+      debug_logf("Removed window id %d from map\n", key);
     }
+    debug_logf("Total items is %d\n", (int)map_instance->size());
+    return true;
+  }
 
-    static int child_window_count() { 
-        auto map_instance = __child_webview_engines_map;
-        return (int)map_instance.size();
+  static void *child_window_get(int key) {
+    auto map_instance = child_webview_map_pointer();
+    std::map<int, void *>::iterator item = map_instance->find(key);
+    if (item != map_instance->end()) {
+      return item->second;
     }
+    return nullptr;
+  }
 
-    static void child_window_all_ids(int count, int *into, int *result_count) {
-        auto map_instance = __child_webview_engines_map;
-        std::map<int, void *>::iterator item = map_instance.begin();
-        auto end = map_instance.end();
-        int index = 0;
-        int end_index = count - 1;
-        while (item != end) {
-            if (index >= end_index) {
-                break;
-            }
-            into[index] = item->first;
-            *result_count ++;
-            index ++;
-            item ++;
-        }
+  static int child_window_count() {
+    auto map_instance = child_webview_map_pointer();
+    return (int)map_instance->size();
+  }
+  /*
+  * count all sub windows
+  * return actual windows
+  */
+  static int child_window_all_ids(int count, int *into) {
+    auto map_instance = child_webview_map_pointer();
+    std::map<int, void *>::iterator item = map_instance->begin();
+    auto end = map_instance->end();
+    int index = 0;
+    int end_index = count - 1;
+    while (item != end) {
+      if (index > end_index) {
+        break;
+      }
+      into[index] = item->first;
+      index ++;
+      item ++;
     }
-    static void get_window_id_params(int window_id, char* result, int result_length) {
-        sprintf_s(result, result_length, "____window_id=%d", window_id);
+    debug_logf("Returing child_window_all_ids, total=%d\n", index);
+    return index;
+  }
+
+  static void child_window_print_all() { 
+      #ifdef NDEBUG
+      return;
+      #endif;
+      int total = child_window_count();
+      int* window_ids = (int*) malloc(sizeof(int) * total);
+      int filled_count = child_window_all_ids(total, window_ids);
+      debug_logf("Reported %d window ids, got %d window ids\n", total, filled_count);
+      for (int i = 0; i < filled_count; i++) {
+        int wid = window_ids[i];
+        debug_logf("Window id=%d pointer=%d\n", wid, child_window_get(wid));
+      }
+      free(window_ids);
+  }
+
+  static void get_window_id_params(int window_id, char *result,
+                                   int result_length) {
+    sprintf_s(result, result_length, WINDOW_ID_PARAM_PREFIX "=%d", window_id);
+  }
+  static void ensure_window_id_params(int window_id, char *url, char *result,
+                                      int result_length) {
+    const int window_id_param_size = 128;
+    char window_id_param[window_id_param_size];
+    get_window_id_params(window_id, (char *)&window_id_param,
+                         window_id_param_size);
+    debug_logf("window id param is %s\n", window_id_param);
+    std::string url_str(url);
+    int index = (int)url_str.find(window_id_param, 0);
+    debug_logf("index of window_id param '%s' from url %s is %d\n",
+               window_id_param, url, index);
+    if (index > 0) {
+      sprintf_s(result, result_length, "%s", url);
+      return;
     }
-    static void ensure_window_id_params(int window_id, char* url, char* result, int result_length) {
-        const int window_id_param_size = 128;
-        char window_id_param[window_id_param_size];
-        get_window_id_params(window_id, (char *) & window_id_param,
-                             window_id_param_size);
-        debug_logf("window id param is %s\n", window_id_param);
-        std::string url_str(url);
-        int index = (int)url_str.find(window_id_param, 0);
-        debug_logf("index of window_id param '%s' from url %s is %d\n", window_id_param, url, index);
-        if (index > 0) {
-            sprintf_s(result, result_length, "%s", url);
-            return;
-        }
-        index = (int)url_str.find("?", 0);
-        sprintf_s(result, result_length, "%s%s%s", url,
-                  index > 0 ? "&" : "?", window_id_param);
+    index = (int)url_str.find("?", 0);
+    sprintf_s(result, result_length, "%s%s%s", url, index > 0 ? "&" : "?",
+              window_id_param);
+  }
+  static int extract_window_id_from_url(std::string url) {
+    const std::regex exp(WINDOW_ID_PARAM_PREFIX "=(\\d+)");
+    std::smatch match;
+    if (std::regex_search(url, match, exp)) {
+      auto content = match[1];
+      auto window_id_str = content.str();
+      return std::stoi(window_id_str);
     }
+    return -1;
+  }
 };
+child_window_map_t webview_provider::__child_webview_engines_map = {};
 
 typedef webview_provider *webview_window_t;
 webview_window_t create_new_webview(bool debug, void *window, int is_main, int lazy);
@@ -1930,7 +2005,7 @@ public:
       ICoreWebView2 *created_view = window_pointer->webview_instance();
       if (SUCCEEDED(hr_result)) {
         hr_result = created_view->Navigate(target_url);
-        debug_logf("Is ok go show %ws, succeed = %d \n", target_url,
+        debug_logf("Requested navigation to %ws, succeed = %d \n", target_url,
                 SUCCEEDED(hr_result) ? 1 : 0);
       } else {
         args->put_Handled(FALSE);
@@ -1939,7 +2014,16 @@ public:
       args->put_NewWindow(created_view);
       args->put_Handled(TRUE);
       deferral->Complete();
+      const int url_buffer_size = 1024;
+      char url_buffer[url_buffer_size];
+      sprintf_s(url_buffer, url_buffer_size, "%ws", target_url);
+      auto window_id = webview_provider::extract_window_id_from_url(
+          std::string((char *)&url_buffer));
+      debug_logf("Window id is %d for url %ws \n", window_id, target_url);
+      webview_provider::child_window_add(window_id, window_pointer);
+      webview_provider::child_window_print_all();
       debug_logf("Invoking this->m_after_window_opened \n");
+      window_pointer->set_window_id(window_id);
       window_pointer->after_window_opened();
     }; 
     debug_logf("Setting up webview2_on_webview_first_inited callback handler \n");
@@ -2133,9 +2217,39 @@ public:
   void terminate() { 
     debug_logf("Sending quit message ? %d \n", this->main_window_flag);
     if (this->main_window_flag) {
+      //close all sub windows
+      int sub_window_count = webview_provider::child_window_count();
+      if (sub_window_count) {
+        int *window_id_array = (int *)malloc(sizeof(int) * sub_window_count);
+        int actual_window_count = webview_provider::child_window_all_ids(sub_window_count, window_id_array);
+        debug_logf("There're %d child windows, %d retrieve %d actually\n", sub_window_count, actual_window_count);
+        for (int i = 0; i < sub_window_count; i++) {
+            int wid = window_id_array[i];
+            void *wptr = webview_provider::child_window_get(wid);
+            if (wptr == nullptr) {
+            debug_logf("Bad child window %d, no window pointer\n", wid);
+                continue;
+            }
+            debug_logf("Terminate child window with id=%d pointer=%p\n", wid, wptr);
+
+            ((webview_provider*) wptr) -> terminate();
+        }
+        free(window_id_array);
+      }
       PostQuitMessage(0);
     }
+    else {
+      webview_provider::child_window_remove(this->get_window_id());
+      webview_provider::child_window_print_all();
+      int windows_left = webview_provider::child_window_count();
+      if (!windows_left) {
+        debug_logf("No child windows left, quiting...\n");
+        PostQuitMessage(0);
+      }
+      delete this;
+    }
   }
+
   void dispatch(dispatch_fn_t f) {
     PostThreadMessage(m_main_thread, WM_APP, 0, (LPARAM) new dispatch_fn_t(f));
   }
@@ -2181,19 +2295,23 @@ public:
     m_webview->Navigate(wurl.c_str());
   }
 
-  void navigate_popup(const std::string &url, int window_id) {
+  void navigate_popup(const std::string &url, int popup_window_id) {
     const int buffer_size = 2048;
     const int url_buffer_size = 1024;
     char script[buffer_size];
     char url_buffer[url_buffer_size];
-    webview_provider::ensure_window_id_params(window_id, (char *)url.c_str(), (char *)&url_buffer, url_buffer_size);
+    webview_provider::ensure_window_id_params(
+        popup_window_id, (char *)url.c_str(), (char *)&url_buffer,
+        url_buffer_size);
     // todo: add window_id to the end of the url string
     sprintf_s((char *const)&script, buffer_size, "window.open('%s', '_blank');", url_buffer);
     debug_logf("Trying to open popup window %s\n", script);
     auto final_script = widen_string(script);
     // record a empty pointer first
-    auto added = webview_provider::child_window_add(window_id, nullptr);
-    debug_logf("Added window %d with null value ok ? %d \n", window_id, added ? 1 : 0);
+    auto added = webview_provider::child_window_add(popup_window_id, nullptr);
+    debug_logf("Added window %d with null value ok ? %d \n", popup_window_id,
+               added ? 1 : 0);
+    webview_provider::child_window_print_all();
     m_webview->ExecuteScript(final_script.c_str(), nullptr);
   }
 
