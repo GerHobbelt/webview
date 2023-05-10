@@ -80,12 +80,18 @@ type WebView interface {
 	// SetSize updates native window size. See Hint constants.
 	SetSize(w int, h int, hint Hint)
 
+	// SetSize updates native window size. See Hint constants.
+	SetPositionAndSize(x int, y int, w int, h int, hint Hint)
+
 	// Navigate navigates webview to the given URL. URL may be a properly encoded data.
 	// URI. Examples:
 	// w.Navigate("https://github.com/webview/webview")
 	// w.Navigate("data:text/html,%3Ch1%3EHello%3C%2Fh1%3E")
 	// w.Navigate("data:text/html;base64,PGgxPkhlbGxvPC9oMT4=")
 	Navigate(url string)
+
+	// open window in popup window
+	OpenChildWindow(window_id string, url string)
 
 	// SetHtml sets the webview HTML directly.
 	// Example: w.SetHtml(w, "<h1>Hello</h1>");
@@ -171,6 +177,14 @@ func (w *webview) Navigate(url string) {
 	C.webview_navigate(w.w, s)
 }
 
+func (w *webview) OpenChildWindow(window_id string, url string) {
+	s := C.CString(url)
+	wid := C.CString(window_id)
+	defer C.free(unsafe.Pointer(s))
+	defer C.free(unsafe.Pointer(wid))
+	C.webview_navigate_popup(w.w, s, wid)
+}
+
 func (w *webview) SetHtml(html string) {
 	s := C.CString(html)
 	defer C.free(unsafe.Pointer(s))
@@ -185,6 +199,10 @@ func (w *webview) SetTitle(title string) {
 
 func (w *webview) SetSize(width int, height int, hint Hint) {
 	C.webview_set_size(w.w, C.int(width), C.int(height), C.int(hint))
+}
+
+func (w *webview) SetPositionAndSize (x int, y int, w int, h int, hint Hint) {
+	C.webview_set_position_n_size(w.w, C.int(x), C.int(y), C.int(width), C.int(height), C.int(hint))
 }
 
 func (w *webview) Init(js string) {

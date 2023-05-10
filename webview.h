@@ -89,19 +89,6 @@ typedef struct {
   char build_metadata[48];
 } webview_version_info_t;
 
-#ifdef __cplusplus
-#ifndef NDEBUG
-#include <stdarg.h>
-#include <stdio.h>
-void ts_logf(char *const fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  vprintf(fmt, args);
-}
-#else 
-void ts_logf(char *const fmt, ...) {}
-#endif
-#endif
 
 
 #ifdef __cplusplus
@@ -153,12 +140,23 @@ WEBVIEW_API void webview_set_title(webview_t w, const char *title);
 WEBVIEW_API void webview_set_size(webview_t w, int width, int height,
                                   int hints);
 
+WEBVIEW_API void webview_set_position_n_size(webview_t w, int x, int y, int width, int height,
+                                  int hints);
+
 // Navigates webview to the given URL. URL may be a properly encoded data URI.
 // Examples:
 // webview_navigate(w, "https://github.com/webview/webview");
 // webview_navigate(w, "data:text/html,%3Ch1%3EHello%3C%2Fh1%3E");
 // webview_navigate(w, "data:text/html;base64,PGgxPkhlbGxvPC9oMT4=");
 WEBVIEW_API void webview_navigate(webview_t w, const char *url);
+
+
+// Navigates webview to the given URL. URL may be a properly encoded data URI.
+// Examples:
+// webview_navigate(w, "https://github.com/webview/webview");
+// webview_navigate(w, "data:text/html,%3Ch1%3EHello%3C%2Fh1%3E");
+// webview_navigate(w, "data:text/html;base64,PGgxPkhlbGxvPC9oMT4=");
+WEBVIEW_API void webview_navigate_popup(webview_t w, const char *url, int window_id);
 
 // Set webview HTML directly.
 // Example: webview_set_html(w, "<h1>Hello</h1>");
@@ -200,6 +198,20 @@ WEBVIEW_API const webview_version_info_t *webview_version();
 
 #ifdef __cplusplus
 }
+
+#ifdef __cplusplus
+#ifndef NDEBUG
+#include <stdarg.h>
+#include <stdio.h>
+void debug_logf(char *const fmt, ...) {
+  va_list args;
+  va_start(args, fmt);
+  vprintf(fmt, args);
+}
+#else 
+void debug_logf(char *const fmt, ...) {}
+#endif
+#endif
 
 #ifndef WEBVIEW_HEADER
 
@@ -1069,6 +1081,9 @@ using browser_engine = detail::cocoa_wkwebview_engine;
 #include <windows.h>
 #include "WebView2.h"
 #include "wil/com.h"
+#include <map>
+#include <stdio.h>
+#include <string>
 
 #ifdef _MSC_VER
 #pragma comment(lib, "advapi32.lib")
@@ -1081,18 +1096,85 @@ using browser_engine = detail::cocoa_wkwebview_engine;
 
 namespace webview {
 
-typedef std::function<void()> simple_callback;
 
+typedef std::function<void()> simple_callback;
+std::map<int, void *> __child_webview_engines_map;
 class webview_provider {
   public:
     virtual ICoreWebView2 *webview_instance() = 0;
-    virtual void set_m_webview2_on_webview_first_inited(
-        simple_callback webview_first_inited) = 0;
+    virtual void set_m_webview2_on_webview_first_inited(simple_callback webview_first_inited) = 0;
     virtual int do_init() = 0;
     virtual void after_window_opened() = 0;
-};
-typedef webview_provider *webview_window_t;
 
+    static bool child_window_add(int key, void* value) {
+        auto map_instance = __child_webview_engines_map;
+        auto result = map_instance.insert(std::map<int, void *>::value_type(key, value));
+        auto ok = result.second;
+        return ok;
+    }
+
+    static bool child_window_remove(int key) {
+        auto map_instance = __child_webview_engines_map;
+        std::map<int, void *>::iterator item = map_instance.find(key);
+        if (item != map_instance.end()) {
+            auto remove_result = map_instance.erase(item);
+        }
+        return true;
+    }
+
+    static void* child_window_get(int key) {
+        auto map_instance = __child_webview_engines_map;
+        std::map<int, void *>::iterator item = map_instance.find(key);
+        if (item != map_instance.end()) {
+            return item->second;
+        }
+        return nullptr;
+    }
+
+    static int child_window_count() { 
+        auto map_instance = __child_webview_engines_map;
+        return (int)map_instance.size();
+    }
+
+    static void child_window_all_ids(int count, int *into, int *result_count) {
+        auto map_instance = __child_webview_engines_map;
+        std::map<int, void *>::iterator item = map_instance.begin();
+        auto end = map_instance.end();
+        int index = 0;
+        int end_index = count - 1;
+        while (item != end) {
+            if (index >= end_index) {
+                break;
+            }
+            into[index] = item->first;
+            *result_count ++;
+            index ++;
+            item ++;
+        }
+    }
+    static void get_window_id_params(int window_id, char* result, int result_length) {
+        sprintf_s(result, result_length, "____window_id=%d", window_id);
+    }
+    static void ensure_window_id_params(int window_id, char* url, char* result, int result_length) {
+        const int window_id_param_size = 128;
+        char window_id_param[window_id_param_size];
+        get_window_id_params(window_id, (char *) & window_id_param,
+                             window_id_param_size);
+        debug_logf("window id param is %s\n", window_id_param);
+        std::string url_str(url);
+        int index = (int)url_str.find(window_id_param, 0);
+        debug_logf("index of window_id param '%s' from url %s is %d\n", window_id_param, url, index);
+        if (index > 0) {
+            sprintf_s(result, result_length, "%s", url);
+            return;
+        }
+        index = (int)url_str.find("?", 0);
+        sprintf_s(result, result_length, "%s%s%s", url,
+                  index > 0 ? "&" : "?", window_id_param);
+    }
+};
+
+typedef webview_provider *webview_window_t;
 webview_window_t create_new_webview(bool debug, void *window, int is_main, int lazy);
 typedef webview_window_t (*create_webview_window_handler)(bool, void *, int, int);
 namespace detail {
@@ -1790,7 +1872,7 @@ public:
     m_cb(controller, webview);
     // callback for m_webview2_on_webview_first_inited
     if (this->m_webview2_on_webview_first_inited) {
-      ts_logf("Invoking m_webview2_on_webview_first_inited\n");
+      debug_logf("Invoking m_webview2_on_webview_first_inited\n");
       this->m_webview2_on_webview_first_inited();
     }
     return S_OK;
@@ -1822,33 +1904,33 @@ public:
     wil::com_ptr<ICoreWebView2WindowFeatures> windowFeatures;
     wil::com_ptr<ICoreWebView2Deferral> deferral;
     HRESULT hr_result;
-    ts_logf("******ICoreWebView2NewWindowRequestedEventHandler Invoke started\n");
+    debug_logf("******ICoreWebView2NewWindowRequestedEventHandler Invoke started\n");
     hr_result = args->GetDeferral(&deferral);
     if (!SUCCEEDED(hr_result)) {
-        ts_logf("Failed to call args->GetDeferral\n");
+        debug_logf("Failed to call args->GetDeferral\n");
         return hr_result;
     }
     hr_result = args->get_WindowFeatures(&windowFeatures);
     if (!SUCCEEDED(hr_result)) {
-        ts_logf("Failed to call args->get_WindowFeatures\n");
+        debug_logf("Failed to call args->get_WindowFeatures\n");
         return hr_result;
     }
     window_pointer = this->create_window_handler(this->debug_mode ? 1 : 0, nullptr, 0, false);
-    ts_logf("Got window pointer %p\n", window_pointer);
+    debug_logf("Got window pointer %p\n", window_pointer);
     simple_callback callback = [args, deferral, window_pointer, this]() {
       LPWSTR target_url;
       HRESULT hr_result;
-      ts_logf("Trying to get uri\n");
+      debug_logf("Trying to get uri\n");
       hr_result = args->get_Uri(&target_url);
       char logging_content[1024];
       sprintf_s((char *)&logging_content, 1024,
                 "Try navigating to %ws succeed = %d\n", target_url,
                 SUCCEEDED(hr_result) ? 1 : 0);
-      ts_logf("Navigation::%s\n", (char *)logging_content);
+      debug_logf("Navigation::%s\n", (char *)logging_content);
       ICoreWebView2 *created_view = window_pointer->webview_instance();
       if (SUCCEEDED(hr_result)) {
         hr_result = created_view->Navigate(target_url);
-        ts_logf("Is ok go show %ws, succeed = %d \n", target_url,
+        debug_logf("Is ok go show %ws, succeed = %d \n", target_url,
                 SUCCEEDED(hr_result) ? 1 : 0);
       } else {
         args->put_Handled(FALSE);
@@ -1857,14 +1939,14 @@ public:
       args->put_NewWindow(created_view);
       args->put_Handled(TRUE);
       deferral->Complete();
-      ts_logf("Invoking this->m_after_window_opened \n");
+      debug_logf("Invoking this->m_after_window_opened \n");
       window_pointer->after_window_opened();
     }; 
-    ts_logf("Setting up webview2_on_webview_first_inited callback handler \n");
+    debug_logf("Setting up webview2_on_webview_first_inited callback handler \n");
     window_pointer->set_m_webview2_on_webview_first_inited(callback);
-    ts_logf("Trying to init the webview: window_pointer->do_init \n");
+    debug_logf("Trying to init the webview: window_pointer->do_init \n");
     window_pointer->do_init();
-    ts_logf("window_pointer->do_init called \n");
+    debug_logf("window_pointer->do_init called \n");
     return S_OK;
   }
   // Checks whether the specified IID equals the IID of the specified type and
@@ -1934,7 +2016,7 @@ class win32_edge_engine: public webview_provider {
 public:
   win32_edge_engine(bool debug, void *window, int is_main = 1, int lazy = 0)
       : main_window_flag(is_main), debug_flag(debug ? 1 : 0) {
-      ts_logf("win32_edge_engine constructor entry\n");
+      debug_logf("win32_edge_engine constructor entry\n");
     if (!is_webview2_available()) {
       return;
     }
@@ -1942,7 +2024,7 @@ public:
       return;
     
     }
-    ts_logf("win32_edge_engine::win32_edge_engine is main window = input arg = "
+    debug_logf("win32_edge_engine::win32_edge_engine is main window = input arg = "
             "%d, saved value = %d \n", is_main, this->main_window_flag);
     enable_dpi_awareness();
     if (window == nullptr) {
@@ -1992,7 +2074,7 @@ public:
       m_window = CreateWindowW(L"webview", L"", WS_OVERLAPPEDWINDOW,
                                CW_USEDEFAULT, CW_USEDEFAULT, 640, 480, nullptr,
                                nullptr, hInstance, nullptr);
-      ts_logf("Created new window %d\n", m_window);
+      debug_logf("Created new window %d\n", m_window);
       if (m_window == nullptr) {
         return;
       }
@@ -2000,7 +2082,7 @@ public:
     } else {
       m_window = *(static_cast<HWND *>(window));
     }
-
+    // main window will not do lazy
     if (!lazy) {
         this->do_init();
     }
@@ -2049,7 +2131,7 @@ public:
   void *window() { return (void *)m_window; }
 
   void terminate() { 
-    ts_logf("Sending quit message ? %d \n", this->main_window_flag);
+    debug_logf("Sending quit message ? %d \n", this->main_window_flag);
     if (this->main_window_flag) {
       PostQuitMessage(0);
     }
@@ -2063,6 +2145,10 @@ public:
   }
 
   void set_size(int width, int height, int hints) {
+    this->set_size(0, 0, width, height, hints);
+  }
+
+  void set_size(int x, int y, int width, int height, int hints) {
     auto style = GetWindowLong(m_window, GWL_STYLE);
     if (hints == WEBVIEW_HINT_FIXED) {
       style &= ~(WS_THICKFRAME | WS_MAXIMIZEBOX);
@@ -2070,7 +2156,6 @@ public:
       style |= (WS_THICKFRAME | WS_MAXIMIZEBOX);
     }
     SetWindowLong(m_window, GWL_STYLE, style);
-
     if (hints == WEBVIEW_HINT_MAX) {
       m_maxsz.x = width;
       m_maxsz.y = height;
@@ -2079,7 +2164,8 @@ public:
       m_minsz.y = height;
     } else {
       RECT r;
-      r.left = r.top = 0;
+      r.left = x;
+      r.top = y;
       r.right = width;
       r.bottom = height;
       AdjustWindowRect(&r, WS_OVERLAPPEDWINDOW, 0);
@@ -2093,6 +2179,22 @@ public:
   void navigate(const std::string &url) {
     auto wurl = widen_string(url);
     m_webview->Navigate(wurl.c_str());
+  }
+
+  void navigate_popup(const std::string &url, int window_id) {
+    const int buffer_size = 2048;
+    const int url_buffer_size = 1024;
+    char script[buffer_size];
+    char url_buffer[url_buffer_size];
+    webview_provider::ensure_window_id_params(window_id, (char *)url.c_str(), (char *)&url_buffer, url_buffer_size);
+    // todo: add window_id to the end of the url string
+    sprintf_s((char *const)&script, buffer_size, "window.open('%s', '_blank');", url_buffer);
+    debug_logf("Trying to open popup window %s\n", script);
+    auto final_script = widen_string(script);
+    // record a empty pointer first
+    auto added = webview_provider::child_window_add(window_id, nullptr);
+    debug_logf("Added window %d with null value ok ? %d \n", window_id, added ? 1 : 0);
+    m_webview->ExecuteScript(final_script.c_str(), nullptr);
   }
 
   void init(const std::string &js) {
@@ -2114,33 +2216,33 @@ public:
     this->m_webview2_on_webview_first_inited = webview_first_inited;
   }
   void after_window_opened() { 
-      ts_logf("Resizing new opened window\n");
+      debug_logf("Resizing new opened window\n");
       this->set_size(1024, 768, WEBVIEW_HINT_NONE);
   }
   /*
   * Let external code to do some setup
   */
   int do_init() {
-    ts_logf("do_init ShowWindow\n");
+    debug_logf("do_init ShowWindow\n");
     ShowWindow(m_window, SW_SHOW);
-    ts_logf("do_init UpdateWindow\n");
+    debug_logf("do_init UpdateWindow\n");
     UpdateWindow(m_window);
-    ts_logf("do_init SetFocus\n");
+    debug_logf("do_init SetFocus\n");
     SetFocus(m_window);
     
-    ts_logf("do_init std::bind\n");
+    debug_logf("do_init std::bind\n");
     auto cb =
         std::bind(&win32_edge_engine::on_message, this, std::placeholders::_1);
 
-    ts_logf("do_init embed\n");
+    debug_logf("do_init embed\n");
     embed(m_window, debug_flag, cb);
-    ts_logf("do_init resize\n");
+    debug_logf("do_init resize\n");
     resize(m_window);
     if (this->main_window_flag) {
-      ts_logf("do_init m_controller->MoveFocus\n");
+      debug_logf("do_init m_controller->MoveFocus\n");
       m_controller->MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
     }
-    ts_logf("do_init  end\n");
+    debug_logf("do_init  end\n");
     return 0;
   }
   void event_thread_method(std::atomic_flag *flag) {
@@ -2181,38 +2283,38 @@ public:
           webview->AddRef();
           m_controller = controller;
           m_webview = webview;
-          ts_logf("got webview %p for window %p\n", webview, m_window);
+          debug_logf("got webview %p for window %p\n", webview, m_window);
           flag.clear();
         },
         create_new_webview, 
             debug, 
             this->m_webview2_on_webview_first_inited
         );
-    ts_logf("webview2_com_handler created, now trying to call m_com_handler->set_attempt_handler\n");
+    debug_logf("webview2_com_handler created, now trying to call m_com_handler->set_attempt_handler\n");
     m_com_handler->set_attempt_handler([&] {
       return m_webview2_loader.create_environment_with_options(
           nullptr, userDataFolder, nullptr, m_com_handler);
     });
-    ts_logf("trying to create environment\n");
+    debug_logf("trying to create environment\n");
     m_com_handler->try_create_environment();
 
     if (this->main_window_flag) {
-      ts_logf("Trying to read messages in SYNC mode \n");
+      debug_logf("Trying to read messages in SYNC mode \n");
       this->event_thread_method(&flag);
     } 
-    ts_logf("Checking if the m_webivew and m_controller ok\n");
+    debug_logf("Checking if the m_webivew and m_controller ok\n");
     if (!m_controller || !m_webview) {
       return false;
     }
-    ts_logf("m_webview->add_NewWindowRequested\n");
+    debug_logf("m_webview->add_NewWindowRequested\n");
     m_webview->add_NewWindowRequested(m_com_handler, nullptr);
     ICoreWebView2Settings *settings = nullptr;
-    ts_logf("m_webview->get_Settings\n");
+    debug_logf("m_webview->get_Settings\n");
     auto res = m_webview->get_Settings(&settings);
     if (res != S_OK) {
       return false;
     }
-    ts_logf("settings->put_AreDevToolsEnabled\n");
+    debug_logf("settings->put_AreDevToolsEnabled\n");
     res = settings->put_AreDevToolsEnabled(debug ? TRUE : FALSE);
     if (res != S_OK) {
       return false;
@@ -2221,7 +2323,7 @@ public:
     return true;
   }
   int need_quit() {
-      ts_logf("need quit? is main window = %d \n", this->main_window_flag);
+      debug_logf("need quit? is main window = %d \n", this->main_window_flag);
       return this->main_window_flag;
   }
   void resize(HWND wnd) {
@@ -2280,7 +2382,7 @@ public:
   webview(bool debug = false, void *wnd = nullptr, int is_main = 1,
           int lazy = 0)
       : browser_engine(debug, wnd, is_main, lazy) {
-    ts_logf("webview inititalization ismain=%d\n", is_main);
+    debug_logf("webview inititalization ismain=%d\n", is_main);
   }
 
   void navigate(const std::string &url) {
@@ -2376,9 +2478,10 @@ private:
 
   std::map<std::string, binding_ctx_t> bindings;
 };
+
 webview_window_t create_new_webview(bool debug, void* window, 
     int is_main=0, int lazy = 0) {
-  ts_logf("create_new_webview is calling \n");
+  debug_logf("create_new_webview is calling \n");
   return new webview(debug, window, is_main, lazy);
 }
 } // namespace webview
@@ -2387,7 +2490,7 @@ webview_window_t create_new_webview(bool debug, void* window,
 
 WEBVIEW_API webview_t webview_create(int debug, void *wnd) {
   int main_flag = 1;
-  ts_logf("try calling webview::webview with is_main=%d\n", main_flag);
+  debug_logf("try calling webview::webview with is_main=%d\n", main_flag);
   printf("main flag =  %d\n", main_flag);
   auto w = new webview::webview(debug, wnd, main_flag);
   if (!w->window()) {
@@ -2427,8 +2530,17 @@ WEBVIEW_API void webview_set_size(webview_t w, int width, int height,
   static_cast<webview::webview *>(w)->set_size(width, height, hints);
 }
 
+WEBVIEW_API void webview_set_position_n_size(webview_t w, int x, int y,
+                                             int width, int height, int hints) {
+  static_cast<webview::webview *>(w)->set_size(x, y, width, height, hints);
+}
+
 WEBVIEW_API void webview_navigate(webview_t w, const char *url) {
   static_cast<webview::webview *>(w)->navigate(url);
+}
+
+void webview_navigate_popup(webview_t w, const char* url, int window_id) {
+  static_cast<webview::webview *>(w)->navigate_popup(url, window_id);
 }
 
 WEBVIEW_API void webview_set_html(webview_t w, const char *html) {
