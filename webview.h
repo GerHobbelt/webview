@@ -96,8 +96,8 @@ extern "C" {
 #endif
 
 typedef void *webview_t;
-
-// Creates a new webview instance. If debug is non-zero - developer tools will
+typedef void(*cb_ext_child_window_created) (int window_id, void* window);
+    // Creates a new webview instance. If debug is non-zero - developer tools will
 // be enabled (if the platform supports them). Window parameter can be a
 // pointer to the native window handle. If it's non-null - then child WebView
 // is embedded into the given parent window. Otherwise a new window is created.
@@ -195,6 +195,8 @@ WEBVIEW_API void webview_return(webview_t w, const char *seq, int status,
 // Get the library's version information.
 // @since 0.10
 WEBVIEW_API const webview_version_info_t *webview_version();
+
+WEBVIEW_API void webview_set_child_window_callback(cb_ext_child_window_created callback);
 
 #ifdef __cplusplus
 }
@@ -1107,6 +1109,7 @@ typedef std::map<int, void *>  child_window_map_t;
 class webview_provider {
 private:
   int window_id = -1;
+  inline static cb_ext_child_window_created s_cb_ext_child_window_created = nullptr;
   static child_window_map_t *child_webview_map_pointer() {
     return & (webview_provider::__child_webview_engines_map);
   }
@@ -1129,6 +1132,13 @@ public:
     }
     this->window_id = value;
     return true;
+  }
+  static void set_cb_ext_child_window_created(
+      cb_ext_child_window_created callback) {
+    s_cb_ext_child_window_created = callback;
+  }
+  static cb_ext_child_window_created get_cb_ext_child_window_created() {
+    return s_cb_ext_child_window_created;
   }
   static bool child_window_add(int key, void *value) {
     debug_logf("Trying adding window id %d, window pointer %p\n", key, value);
@@ -2329,13 +2339,15 @@ public:
     m_webview->NavigateToString(widen_string(html).c_str());
   }
   ICoreWebView2* webview_instance() { return this->m_webview;}
-  void set_m_webview2_on_webview_first_inited(
-      simple_callback webview_first_inited) {
+  void set_m_webview2_on_webview_first_inited(simple_callback webview_first_inited) {
     this->m_webview2_on_webview_first_inited = webview_first_inited;
   }
   void after_window_opened() { 
-      debug_logf("Resizing new opened window\n");
-      this->set_size(1024, 768, WEBVIEW_HINT_NONE);
+    auto ext_callback = webview_provider::get_cb_ext_child_window_created();
+    debug_logf("child window opened, trying to invoke callback %p\n", ext_callback);
+    if (ext_callback) {
+      ext_callback(this->get_window_id(), this);
+    }
   }
   /*
   * Let external code to do some setup
@@ -2696,6 +2708,10 @@ WEBVIEW_API void webview_return(webview_t w, const char *seq, int status,
 
 WEBVIEW_API const webview_version_info_t *webview_version() {
   return &webview::detail::library_version_info;
+}
+
+WEBVIEW_API void webview_set_child_window_callback(cb_ext_child_window_created callback) {
+    webview::webview_provider::set_cb_ext_child_window_created(callback);
 }
 
 #endif /* WEBVIEW_HEADER */
