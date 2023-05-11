@@ -14,7 +14,7 @@ struct binding_context {
 static _webviewDispatchGoCallback_t __webviewDispatchGoCallback = NULL;
 static _webviewBindingGoCallback_t __webviewBindingGoCallback = NULL;
 
-static void _webview_dispatch_cb(webview_t w, void *arg) {
+void _webview_dispatch_cb(webview_t w, void *arg) {
   if (__webviewDispatchGoCallback) {
     __webviewDispatchGoCallback(arg);
   } else {
@@ -22,7 +22,7 @@ static void _webview_dispatch_cb(webview_t w, void *arg) {
   }
 }
 
-static void _webview_binding_cb(const char *id, const char *req, void *arg) {
+void _webview_binding_cb(const char *id, const char *req, void *arg) {
   struct binding_context *ctx = (struct binding_context *)arg;
   if (__webviewBindingGoCallback) {
     __webviewBindingGoCallback(ctx->w, (char *)id, (char *)req, ctx->index);
