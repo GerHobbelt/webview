@@ -14,10 +14,15 @@ func openPopup() {
 }
 func onChildWindowOpen(windowId int, w webview.WebView) {
 	fmt.Printf("onChildWindowOpen window id is %d, view is %v \n", windowId, w)
+	err := w.Bind("hello", hello)
+	if err != nil {
+		fmt.Printf("Failed to bind: %v\n", err)
+	}
+	w.Eval("console.info('hello from golang', new Date());")
 	w.SetSize(1024, 768, webview.HintNone)
 }
 func hello() {
-	fmt.Println("Hello from child window")
+	fmt.Println("Hello from golang")
 }
 func main() {
 	webview.AddChildWindowCallback(onChildWindowOpen)
@@ -26,7 +31,6 @@ func main() {
 	w.SetTitle("Basic Example")
 	w.SetSize(480, 320, webview.HintNone)
 	w.Bind("openPopup", openPopup)
-	w.Bind("hello", hello)
 	w.Navigate("http://localhost:3030/webview.html")
 	globalWindow = w
 	w.Run()

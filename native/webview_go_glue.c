@@ -41,6 +41,7 @@ WEBVIEW_API void CgoWebViewBind(webview_t w, const char *name, uintptr_t index) 
   ctx->index = index;
   webview_bind(w, name, _webview_binding_cb, (void *)ctx);
 }
+
 WEBVIEW_API void set_webviewDispatchGoCallback(_webviewDispatchGoCallback_t callback) {
   __webviewDispatchGoCallback = callback;
 }

@@ -40,11 +40,15 @@ extern "C" {
 #ifndef NDEBUG
 #include <stdarg.h>
 #include <stdio.h>
-void debug_logf(char *const fmt, ...) {
+
+void debug_logf_actual(int line, char* file, char *const fmt, ...) {
   va_list args;
   va_start(args, fmt);
+  printf("%s#%d ", file, line);
   vprintf(fmt, args);
 }
+#define debug_logf(format, ...)                                         \
+  debug_logf_actual(__LINE__, __FILE__, format, __VA_ARGS__)
 #else 
 void debug_logf(char *const fmt, ...) {}
 #endif
@@ -957,6 +961,7 @@ public:
   virtual int do_init() = 0;
   virtual void after_window_opened() = 0;
   virtual void terminate() = 0;
+  virtual void setup_webview_before_navigation() = 0;
   int get_window_id() { return this->window_id; }
   bool set_window_id(int value) {
     debug_logf("Trying to update MY window id %d for %p current window_id is %d\n",
@@ -1053,7 +1058,7 @@ public:
       debug_logf("Reported %d window ids, got %d window ids\n", total, filled_count);
       for (int i = 0; i < filled_count; i++) {
         int wid = window_ids[i];
-        debug_logf("Window id=%d pointer=%d\n", wid, child_window_get(wid));
+        debug_logf("Window id=%d pointer=%p\n", wid, child_window_get(wid));
       }
       free(window_ids);
   }
@@ -1705,7 +1710,8 @@ class webview2_com_handler
       public ICoreWebView2CreateCoreWebView2ControllerCompletedHandler,
       public ICoreWebView2WebMessageReceivedEventHandler,
       public ICoreWebView2PermissionRequestedEventHandler,
-      public ICoreWebView2NewWindowRequestedEventHandler {
+      public ICoreWebView2NewWindowRequestedEventHandler,
+      public ICoreWebView2NavigationCompletedEventHandler {
   using webview2_com_handler_cb_t =
       std::function<void(ICoreWebView2Controller *, ICoreWebView2 *webview)>;
 
@@ -1715,7 +1721,7 @@ public:
                        bool debug, simple_callback webview_inited)
       : m_window(hwnd), m_msgCb(msgCb), m_cb(cb),
         create_window_handler(create_window_handler), debug_mode(debug),
-        m_webview2_on_webview_first_inited(webview_inited) {}
+        m_webview2_on_webview_first_inited(webview_inited){}
 
   virtual ~webview2_com_handler() = default;
   webview2_com_handler(const webview2_com_handler &other) = delete;
@@ -1816,7 +1822,18 @@ public:
     }
     return S_OK;
   }
-
+  HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2 *sender, ICoreWebView2NavigationCompletedEventArgs *args) {
+    std::string script = "console.info('hello ', new Date());";
+    size_t script_lenth = script.length();
+    wchar_t *buffer = new wchar_t[script_lenth + 1];
+    MultiByteToWideChar(CP_ACP, 0, script.c_str(), script_lenth, buffer,
+                        script_lenth * sizeof(wchar_t));
+    HRESULT result = sender->ExecuteScript(buffer, nullptr);
+    debug_logf("ICoreWebView2NavigationCompletedEventHandler Execute script  %s ok ? %d webview is %p\n", script.c_str(), SUCCEEDED(result) ? 1:0, sender);
+    delete buffer;
+    this->m_window_pointer->after_window_opened();
+    return S_OK;
+  }
   // new windows requested handler
   HRESULT STDMETHODCALLTYPE Invoke(
       ICoreWebView2 *sender, ICoreWebView2NewWindowRequestedEventArgs *args) {
@@ -1835,7 +1852,9 @@ public:
         debug_logf("Failed to call args->get_WindowFeatures\n");
         return hr_result;
     }
-    window_pointer = this->create_window_handler(this->debug_mode ? 1 : 0, nullptr, 0, false);
+    // create main instance first
+    window_pointer = this->create_window_handler(this->debug_mode ? 1 : 0, nullptr, 0, 1);
+    m_window_pointer = window_pointer;
     debug_logf("Got window pointer %p\n", window_pointer);
     simple_callback callback = [args, deferral, window_pointer, this]() {
       LPWSTR target_url;
@@ -1849,6 +1868,9 @@ public:
       debug_logf("Navigation::%s\n", (char *)logging_content);
       ICoreWebView2 *created_view = window_pointer->webview_instance();
       if (SUCCEEDED(hr_result)) {
+        // must setup the webview, or the bindings will not work
+        window_pointer->setup_webview_before_navigation();
+        created_view->add_NavigationCompleted(this, nullptr);
         hr_result = created_view->Navigate(target_url);
         debug_logf("Requested navigation to %ws, succeed = %d \n", target_url,
                 SUCCEEDED(hr_result) ? 1 : 0);
@@ -1859,6 +1881,7 @@ public:
       args->put_NewWindow(created_view);
       args->put_Handled(TRUE);
       deferral->Complete();
+      // call pre init handler
       const int url_buffer_size = 1024;
       char url_buffer[url_buffer_size];
       sprintf_s(url_buffer, url_buffer_size, "%ws", target_url);
@@ -1869,7 +1892,7 @@ public:
       webview_provider::child_window_print_all();
       debug_logf("Invoking this->m_after_window_opened \n");
       window_pointer->set_window_id(window_id);
-      window_pointer->after_window_opened();
+
     }; 
     debug_logf("Setting up webview2_on_webview_first_inited callback handler \n");
     window_pointer->set_m_webview2_on_webview_first_inited(callback);
@@ -1878,6 +1901,7 @@ public:
     debug_logf("window_pointer->do_init called \n");
     return S_OK;
   }
+
   // Checks whether the specified IID equals the IID of the specified type and
   // if so casts the "this" pointer to T and returns it. Returns nullptr on
   // mismatching IIDs.
@@ -1939,6 +1963,7 @@ private:
   bool debug_mode;
   create_webview_window_handler create_window_handler;
   simple_callback m_webview2_on_webview_first_inited;
+  webview_provider *m_window_pointer = nullptr;
 };
 
 class win32_edge_engine: public webview_provider {
@@ -2003,7 +2028,7 @@ public:
       m_window = CreateWindowW(L"webview", L"", WS_OVERLAPPEDWINDOW,
                                CW_USEDEFAULT, CW_USEDEFAULT, 640, 480, nullptr,
                                nullptr, hInstance, nullptr);
-      debug_logf("Created new window %d\n", m_window);
+      debug_logf("Created new window %d lazy is %d \n", m_window, lazy);
       if (m_window == nullptr) {
         return;
       }
@@ -2164,12 +2189,16 @@ public:
 
   void init(const std::string &js) {
     auto wjs = widen_string(js);
-    m_webview->AddScriptToExecuteOnDocumentCreated(wjs.c_str(), nullptr);
+    HRESULT result = m_webview->AddScriptToExecuteOnDocumentCreated(wjs.c_str(), nullptr);
+    bool ok = SUCCEEDED(result);
+    debug_logf("ok = %d for calling init [webview=%p] %s\n", ok ? 1 : 0, this->m_webview, js.c_str());
   }
 
   void eval(const std::string &js) {
     auto wjs = widen_string(js);
-    m_webview->ExecuteScript(wjs.c_str(), nullptr);
+    HRESULT result = m_webview->ExecuteScript(wjs.c_str(), nullptr);
+    bool ok = SUCCEEDED(result);
+    debug_logf("ok = %d for calling eval [webview=%p] %s\n", ok ? 1 : 0, this->m_webview, js.c_str());
   }
 
   void set_html(const std::string &html) {
@@ -2181,7 +2210,7 @@ public:
   }
   void after_window_opened() { 
     auto ext_callback = webview_provider::get_cb_ext_child_window_created();
-    debug_logf("child window opened, trying to invoke callback %p\n", ext_callback);
+    debug_logf("child window opened, trying to invoke callback %p webview=%p \n", ext_callback, this->m_webview);
     if (ext_callback) {
       ext_callback(this->get_window_id(), this);
     }
@@ -2212,7 +2241,7 @@ public:
     debug_logf("do_init  end\n");
     return 0;
   }
-  void event_thread_method(std::atomic_flag *flag) {
+  void event_thread_method(std::atomic_flag *flag, unsigned int break_for_msg = 0) {
     MSG msg = {};
     std::atomic_flag local_flag = ATOMIC_FLAG_INIT;
     if (flag == nullptr) {
@@ -2221,7 +2250,19 @@ public:
     while (flag->test_and_set() && GetMessage(&msg, nullptr, 0, 0) && this->keep_running_event_thread) {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
+      unsigned int msg_id = (unsigned int) msg.message;
+      if (break_for_msg > 0 && break_for_msg == msg_id) {
+          debug_logf("break for msg %d\n", break_for_msg);
+          break;
+      }
     }
+    debug_logf("event_thread_method stoped for %p \n", this);
+  }
+  void setup_webview_before_navigation() {
+    debug_logf("int('window.external={invoke:s=>window.chrome.webview."
+               "postMessage(s)}');\n");
+    init("window.external={invoke:s=>window.chrome.webview.postMessage(s)}");
+    this->embed_latter_job_called = true;
   }
  private:
   bool embed(HWND wnd, bool debug, msg_cb_t cb) {
@@ -2243,6 +2284,7 @@ public:
         wnd, cb,
         [&](ICoreWebView2Controller *controller, ICoreWebView2 *webview) {
           if (!controller || !webview) {
+            debug_logf("webview2_com_handler callback controller pointer is %p, webivew pointer is %p\n", controller, webview);
             flag.clear();
             return;
           }
@@ -2250,12 +2292,13 @@ public:
           webview->AddRef();
           m_controller = controller;
           m_webview = webview;
-          debug_logf("got webview %p for window %p\n", webview, m_window);
+          debug_logf("webview2_com_handler callback got webview %p for window %p\n", webview, m_window);
           flag.clear();
+          embed_latter_job(debug);
         },
         create_new_webview, 
             debug, 
-            this->m_webview2_on_webview_first_inited
+            this->main_window_flag ? nullptr : this->m_webview2_on_webview_first_inited
         );
     debug_logf("webview2_com_handler created, now trying to call m_com_handler->set_attempt_handler\n");
     m_com_handler->set_attempt_handler([&] {
@@ -2269,9 +2312,31 @@ public:
       debug_logf("Trying to read messages in SYNC mode \n");
       this->event_thread_method(&flag);
     } 
-    debug_logf("Checking if the m_webivew and m_controller ok\n");
+    else {
+      std::thread event_thread(&win32_edge_engine::event_thread_method, this, nullptr, 0);
+      event_thread.detach();
+    }
+    debug_logf("Checking if the m_webivew and m_controller ok m_controller=%p "
+               "m_webview=%p\n",
+               m_controller, m_webview);
     if (!m_controller || !m_webview) {
+      this->embed_latter_job_needed = true;
       return false;
+    }
+    this->embed_latter_job(debug, true);
+    return true;
+  }
+
+  bool embed_latter_job(bool debug, bool force = false) {
+    debug_logf("embed_latter_job is calling, embed_latter_job_needed = %d, "
+               "embed_latter_job_called = %d, force=%d m_controller=%p m_webview=%p\n ",
+               embed_latter_job_needed ? 1 : 0, embed_latter_job_called ? 1 : 0,
+               force ? 1 : 0, m_controller, m_webview);
+    if(!this->embed_latter_job_needed && !force) {
+      return true;
+    }
+    if (this->embed_latter_job_called && !force) {
+        return true;
     }
     debug_logf("m_webview->add_NewWindowRequested\n");
     m_webview->add_NewWindowRequested(m_com_handler, nullptr);
@@ -2286,9 +2351,10 @@ public:
     if (res != S_OK) {
       return false;
     }
-    init("window.external={invoke:s=>window.chrome.webview.postMessage(s)}");
+    this->setup_webview_before_navigation();
     return true;
   }
+
   int need_quit() {
       debug_logf("need quit? is main window = %d \n", this->main_window_flag);
       return this->main_window_flag;
@@ -2333,6 +2399,8 @@ public:
   int main_window_flag = 0;
   int debug_flag = 0;
   int keep_running_event_thread = 1;
+  bool embed_latter_job_called = 0;
+  bool embed_latter_job_needed = 0;
 };
 
 } // namespace detail

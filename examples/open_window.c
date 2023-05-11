@@ -12,9 +12,15 @@ void increment(const char *seq, const char *req, void *arg) {
   webview_navigate_popup(w, url, 1);
   webview_return(w, seq, 0, "");
 }
+void hello(const char *seq, const char *req, void *arg) { 
+	UNUSED(req);
+	printf("hello called\n");
+	webview_return(w, seq, 0, "");
+}
 void child_window_callback(int window_id, webview_t window) {
   printf("child_window_callback window=%d window=%p\n", window_id, window);
   webview_set_size(window, 1024, 768, 0);
+  webview_bind(window, "hello", hello, NULL);
 }
 #ifdef _WIN32
 //int WINAPI WinMain(HINSTANCE hInt, HINSTANCE hPrevInst, LPSTR lpCmdLine,
