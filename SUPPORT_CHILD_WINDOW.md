@@ -48,4 +48,14 @@ You can change it inside terminate method of ```native/webview.h``` #2064:
 
 Well, I have no time to resolve the compiling issue for static link right now. And I have to split the headers in order to do dynamic linking, sorry.
 
+#### i. golang binding is broken in child window.
+
+You need to call native method in following way:
+
+```javascript
+window.chrome.webview.postMessage('{"id":1,"method":"hello","params":[]}')
+```
+
+
+
 
