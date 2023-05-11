@@ -36,23 +36,7 @@ extern "C" {
 #ifdef __cplusplus
 }
 
-#ifdef __cplusplus
-#ifndef NDEBUG
-#include <stdarg.h>
-#include <stdio.h>
-
-void debug_logf_actual(int line, char* file, char *const fmt, ...) {
-  va_list args;
-  va_start(args, fmt);
-  printf("%s#%d ", file, line);
-  vprintf(fmt, args);
-}
-#define debug_logf(format, ...)                                         \
-  debug_logf_actual(__LINE__, __FILE__, format, __VA_ARGS__)
-#else 
-void debug_logf(char *const fmt, ...) {}
-#endif
-#endif
+#include "logging.h"
 
 #ifndef WEBVIEW_HEADER
 
@@ -1823,6 +1807,7 @@ public:
     return S_OK;
   }
   HRESULT STDMETHODCALLTYPE Invoke(ICoreWebView2 *sender, ICoreWebView2NavigationCompletedEventArgs *args) {
+    /*
     std::string script = "console.info('hello ', new Date());";
     size_t script_lenth = script.length();
     wchar_t *buffer = new wchar_t[script_lenth + 1];
@@ -1831,6 +1816,7 @@ public:
     HRESULT result = sender->ExecuteScript(buffer, nullptr);
     debug_logf("ICoreWebView2NavigationCompletedEventHandler Execute script  %s ok ? %d webview is %p\n", script.c_str(), SUCCEEDED(result) ? 1:0, sender);
     delete buffer;
+    */
     this->m_window_pointer->after_window_opened();
     return S_OK;
   }
@@ -1865,34 +1851,42 @@ public:
       sprintf_s((char *)&logging_content, 1024,
                 "Try navigating to %ws succeed = %d\n", target_url,
                 SUCCEEDED(hr_result) ? 1 : 0);
-      debug_logf("Navigation::%s\n", (char *)logging_content);
-      ICoreWebView2 *created_view = window_pointer->webview_instance();
-      if (SUCCEEDED(hr_result)) {
-        // must setup the webview, or the bindings will not work
-        window_pointer->setup_webview_before_navigation();
-        created_view->add_NavigationCompleted(this, nullptr);
-        hr_result = created_view->Navigate(target_url);
-        debug_logf("Requested navigation to %ws, succeed = %d \n", target_url,
-                SUCCEEDED(hr_result) ? 1 : 0);
-      } else {
+      if(!SUCCEEDED(hr_result)) {
         args->put_Handled(FALSE);
         return;
       }
-      args->put_NewWindow(created_view);
-      args->put_Handled(TRUE);
-      deferral->Complete();
+      debug_logf("Navigation::%s\n", (char *)logging_content);
       // call pre init handler
       const int url_buffer_size = 1024;
       char url_buffer[url_buffer_size];
       sprintf_s(url_buffer, url_buffer_size, "%ws", target_url);
-      auto window_id = webview_provider::extract_window_id_from_url(
-          std::string((char *)&url_buffer));
+      auto window_id = webview_provider::extract_window_id_from_url(std::string((char *)&url_buffer));
       debug_logf("Window id is %d for url %ws \n", window_id, target_url);
-      webview_provider::child_window_add(window_id, window_pointer);
-      webview_provider::child_window_print_all();
-      debug_logf("Invoking this->m_after_window_opened \n");
       window_pointer->set_window_id(window_id);
 
+      ICoreWebView2 *created_view = window_pointer->webview_instance();
+      // must setup the webview, or the bindings will not work
+      window_pointer->setup_webview_before_navigation();
+      created_view->add_NavigationCompleted(this, nullptr);
+
+      if (this->m_webview2_on_webview_first_inited) {
+        debug_logf("Invoking m_webview2_on_webview_first_inited\n");
+        this->m_webview2_on_webview_first_inited();
+      }
+
+      hr_result = created_view->Navigate(target_url);
+      debug_logf("Requested navigation to %ws, succeed = %d \n", target_url,
+                 SUCCEEDED(hr_result) ? 1 : 0);
+
+      args->put_NewWindow(created_view);
+      args->put_Handled(TRUE);
+      deferral->Complete();
+      
+      webview_provider::child_window_add(window_id, window_pointer);
+      webview_provider::child_window_print_all();
+      
+      debug_logf("Invoking this->m_after_window_opened \n");
+      window_pointer->after_window_opened();
     }; 
     debug_logf("Setting up webview2_on_webview_first_inited callback handler \n");
     window_pointer->set_m_webview2_on_webview_first_inited(callback);
@@ -2526,7 +2520,7 @@ webview_window_t create_new_webview(bool debug, void* window,
 WEBVIEW_API webview_t webview_create(int debug, void *wnd) {
   int main_flag = 1;
   debug_logf("try calling webview::webview with is_main=%d\n", main_flag);
-  printf("main flag =  %d\n", main_flag);
+  debug_logf("main flag =  %d\n", main_flag);
   auto w = new webview::webview(debug, wnd, main_flag);
   if (!w->window()) {
     delete w;

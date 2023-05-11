@@ -13,6 +13,7 @@ func openPopup() {
 	globalWindow.OpenChildWindow(100, "http://localhost:3030/child.html")
 }
 func onChildWindowOpen(windowId int, w webview.WebView) {
+	webview.BindCallbacks()
 	fmt.Printf("onChildWindowOpen window id is %d, view is %v \n", windowId, w)
 	err := w.Bind("hello", hello)
 	if err != nil {

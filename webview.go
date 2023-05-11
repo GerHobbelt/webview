@@ -31,14 +31,16 @@ import (
 	"sync"
 	"unsafe"
 )
-
-func init() {
+func BindCallbacks() {
 	c_webviewDispatchGoCallback := C._webviewDispatchGoCallback_t(C.c_webviewDispatchGoCallback)
 	c_webviewBindingGoCallback := C._webviewBindingGoCallback_t(C.c_webviewBindingGoCallback)
 	c_goOnChildWindowCreatedCallback := C.cb_ext_child_window_created(C.c_goOnChildWindowCreatedCallback)
 	C.set_webviewDispatchGoCallback(c_webviewDispatchGoCallback)
 	C.set_webviewBindingGoCallback(c_webviewBindingGoCallback)
 	C.webview_set_child_window_callback(c_goOnChildWindowCreatedCallback)
+}
+func init() {
+	BindCallbacks();
 	// Ensure that main.main is called from the main thread
 	runtime.LockOSThread()
 }

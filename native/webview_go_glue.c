@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+#include "logging.h"
 
 struct binding_context {
   webview_t w;
@@ -18,7 +18,7 @@ void _webview_dispatch_cb(webview_t w, void *arg) {
   if (__webviewDispatchGoCallback) {
     __webviewDispatchGoCallback(arg);
   } else {
-    printf("__webviewDispatchGoCallback is NULL \n");
+    debug_logf("__webviewDispatchGoCallback is NULL \n");
   }
 }
 
@@ -27,7 +27,7 @@ void _webview_binding_cb(const char *id, const char *req, void *arg) {
   if (__webviewBindingGoCallback) {
     __webviewBindingGoCallback(ctx->w, (char *)id, (char *)req, ctx->index);
   } else {
-    printf("__webviewBindingGoCallback is NULL \n");
+    debug_logf("__webviewBindingGoCallback is NULL \n");
   }
 }
 
@@ -43,8 +43,10 @@ WEBVIEW_API void CgoWebViewBind(webview_t w, const char *name, uintptr_t index) 
 }
 
 WEBVIEW_API void set_webviewDispatchGoCallback(_webviewDispatchGoCallback_t callback) {
+  debug_logf("set_webviewDispatchGoCallback callback=%p\n", callback);
   __webviewDispatchGoCallback = callback;
 }
 WEBVIEW_API void set_webviewBindingGoCallback(_webviewBindingGoCallback_t callback) {
+  debug_logf("set_webviewBindingGoCallback callback=%p\n", callback);
   __webviewBindingGoCallback = callback;
 }
