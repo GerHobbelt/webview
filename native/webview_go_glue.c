@@ -11,8 +11,8 @@ struct binding_context {
   uintptr_t index;
 };
 
-static _webviewDispatchGoCallback_t __webviewDispatchGoCallback = NULL;
-static _webviewBindingGoCallback_t __webviewBindingGoCallback = NULL;
+_webviewDispatchGoCallback_t __webviewDispatchGoCallback = NULL;
+_webviewBindingGoCallback_t __webviewBindingGoCallback = NULL;
 
 void _webview_dispatch_cb(webview_t w, void *arg) {
   if (__webviewDispatchGoCallback) {

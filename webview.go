@@ -31,6 +31,7 @@ import (
 	"sync"
 	"unsafe"
 )
+
 func BindCallbacks() {
 	c_webviewDispatchGoCallback := C._webviewDispatchGoCallback_t(C.c_webviewDispatchGoCallback)
 	c_webviewBindingGoCallback := C._webviewBindingGoCallback_t(C.c_webviewBindingGoCallback)
@@ -40,7 +41,7 @@ func BindCallbacks() {
 	C.webview_set_child_window_callback(c_goOnChildWindowCreatedCallback)
 }
 func init() {
-	BindCallbacks();
+	BindCallbacks()
 	// Ensure that main.main is called from the main thread
 	runtime.LockOSThread()
 }
