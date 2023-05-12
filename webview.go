@@ -8,7 +8,7 @@ package webview
 #cgo darwin LDFLAGS: -framework WebKit
 
 #cgo windows CXXFLAGS: -DWEBVIEW_EDGE -std=c++17
-#cgo windows LDFLAGS: -ladvapi32 -lole32 -lshell32 -lshlwapi -luser32 -lversion -lwebview
+#cgo windows LDFLAGS: -Llib/go_webview/win/x64 -ladvapi32 -lole32 -lshell32 -lshlwapi -luser32 -lversion -lwebview
 
 #include "native/webview_models.h"
 #include "native/webview_methods.h"
