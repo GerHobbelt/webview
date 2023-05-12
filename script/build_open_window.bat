@@ -16,9 +16,20 @@ echo Native code directory: %native_code_dir%
 :: If you update the nuget package, change its version here
 set nuget_version=1.0.1150.38
 echo Using Nuget Package microsoft.web.webview2.%nuget_version%
-if not exist "%script_dir%\microsoft.web.webview2.%nuget_version%" (
+
+if not exist "nuget.exe" (
 	curl -sSLO https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+)
+
+if not exist "%script_dir%\microsoft.web.webview2.%nuget_version%" (
 	nuget.exe install Microsoft.Web.Webview2 -Version %nuget_version% -OutputDirectory %script_dir% -Source https://api.nuget.org/v3/index.json
+	echo Nuget package installed
+)
+
+set wil_version=1.0.230411.1
+echo Usiung nuget ackage Microsoft.Windows.ImplementationLibrary.%wil_version%
+if not exist "%script_dir%\Microsoft.Windows.ImplementationLibrary.%nuget_version%" (
+	nuget.exe install Microsoft.Windows.ImplementationLibrary -Version %wil_version% -OutputDirectory %script_dir% -Source https://api.nuget.org/v3/index.json
 	echo Nuget package installed
 )
 
@@ -57,7 +68,7 @@ if not exist "%src_dir%\dll\x64\webview.dll" (
 	cl %warning_params% ^
 		/D "WEBVIEW_API=__declspec(dllexport)" ^
 		/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
-		/I "%script_dir%\wil-1.0.230411.1\include" ^
+		/I "%script_dir%\Microsoft.Windows.ImplementationLibrary.%wil_version%\include" ^
 		/I "%native_code_dir%" ^
 		/std:c++17 /EHsc "/Fo%build_dir%"\ ^
 		"%native_code_dir%\webview.cc" "%native_code_dir%\webview_go_glue.c" /link /DLL "/OUT:%src_dir%\dll\x86\webview.dll" || exit /b
@@ -67,7 +78,7 @@ if not exist "%src_dir%\dll\x64\webview.dll" (
 	cl %warning_params% ^
 		/D "WEBVIEW_API=__declspec(dllexport)" ^
 		/I "%script_dir%\microsoft.web.webview2.%nuget_version%\build\native\include" ^
-		/I "%script_dir%\wil-1.0.230411.1\include" ^
+		/I "%script_dir%\Microsoft.Windows.ImplementationLibrary.%wil_version%\include" ^
 		/I "%native_code_dir%" ^
 		/std:c++17 /EHsc "/Fo%build_dir%"\ ^
 		"%native_code_dir%\webview.cc" "%native_code_dir%\webview_go_glue.c" /link /DLL "/OUT:%src_dir%\dll\x64\webview.dll" || exit /b
