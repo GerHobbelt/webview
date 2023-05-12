@@ -1,4 +1,9 @@
-# webview
+# webview [FORKED]
+
+Added support for open child window without address bar on Windows. You CANNOT create two main windows and run them in difference threads.
+
+Check [SUPPORT_CHILD_WINDOW.md](SUPPORT_CHILD_WINDOW.md) for more details.
+
 
 [![Join the chat at https://gitter.im/zserge/webview](https://badges.gitter.im/zserge/webview.svg)](https://gitter.im/zserge/webview?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://img.shields.io/github/workflow/status/webview/webview/CI%20Pipeline)](https://github.com/webview/webview)
