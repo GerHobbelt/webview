@@ -11,3 +11,4 @@ webview-example
 
 examples/scrape/scrape
 **/.clangd
+**/WebView2Loader.dll
