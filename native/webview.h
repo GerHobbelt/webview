@@ -933,6 +933,7 @@ class webview_provider {
 private:
   int window_id = -1;
   inline static cb_ext_child_window_created s_cb_ext_child_window_created = nullptr;
+  inline static cb_ext_child_window_closed s_cb_ext_child_window_closed  = nullptr;
   static child_window_map_t *child_webview_map_pointer() {
     return & (webview_provider::__child_webview_engines_map);
   }
@@ -963,6 +964,13 @@ public:
   }
   static cb_ext_child_window_created get_cb_ext_child_window_created() {
     return s_cb_ext_child_window_created;
+  }
+  static void set_cb_ext_child_window_closed(
+      cb_ext_child_window_closed callback) {
+    s_cb_ext_child_window_closed = callback;
+  }
+  static cb_ext_child_window_closed get_cb_ext_child_window_closed() {
+    return s_cb_ext_child_window_closed;
   }
   static bool child_window_add(int key, void *value) {
     debug_logf("Trying adding window id %d, window pointer %p\n", key, value);
@@ -2112,6 +2120,10 @@ public:
         PostQuitMessage(0);
       }
 #endif // !WEBVIEW_KEEP_MAIN_WINDOW
+      auto callback = webview_provider::get_cb_ext_child_window_closed();
+      if(callback) {
+        callback(this->get_window_id());
+      }
       delete this;
     }
   }
@@ -2609,8 +2621,11 @@ WEBVIEW_API const webview_version_info_t *webview_version() {
   return &webview::detail::library_version_info;
 }
 
-WEBVIEW_API void webview_set_child_window_callback(cb_ext_child_window_created callback) {
+WEBVIEW_API void webview_set_child_window_opened_callback(cb_ext_child_window_created callback) {
     webview::webview_provider::set_cb_ext_child_window_created(callback);
+}
+WEBVIEW_API void webview_set_child_window_closed_callback(cb_ext_child_window_closed callback) {
+    webview::webview_provider::set_cb_ext_child_window_closed(callback);
 }
 
 #endif /* WEBVIEW_HEADER */

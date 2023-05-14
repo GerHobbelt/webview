@@ -19,8 +19,10 @@ package webview
 
 // exported mtehods from golang
 extern void c_webviewDispatchGoCallback(void* w);
-extern void c_goOnChildWindowCreatedCallback(int window_id, webview_t window);
 extern void c_webviewBindingGoCallback(webview_t w, char * c1, char * c2, uintptr_t p1);
+
+extern void c_goOnChildWindowCreatedCallback(int window_id, webview_t window);
+extern void c_goOnChildWindowClosedCallback(int window_id);
 */
 import "C"
 import (
@@ -36,9 +38,12 @@ func BindCallbacks() {
 	c_webviewDispatchGoCallback := C._webviewDispatchGoCallback_t(C.c_webviewDispatchGoCallback)
 	c_webviewBindingGoCallback := C._webviewBindingGoCallback_t(C.c_webviewBindingGoCallback)
 	c_goOnChildWindowCreatedCallback := C.cb_ext_child_window_created(C.c_goOnChildWindowCreatedCallback)
+	c_goOnChildWindowClosedCallback := C.cb_ext_child_window_closed(C.c_goOnChildWindowClosedCallback)
 	C.set_webviewDispatchGoCallback(c_webviewDispatchGoCallback)
 	C.set_webviewBindingGoCallback(c_webviewBindingGoCallback)
-	C.webview_set_child_window_callback(c_goOnChildWindowCreatedCallback)
+
+	C.webview_set_child_window_opened_callback(c_goOnChildWindowCreatedCallback)
+	C.webview_set_child_window_closed_callback(c_goOnChildWindowClosedCallback)
 }
 func init() {
 	BindCallbacks()
@@ -169,6 +174,7 @@ func NewWindow(debug bool, window unsafe.Pointer) WebView {
 }
 
 var childWindowCreatedCallbacks []func(int, WebView)
+var childWindowClosedCallbacks []func(int)
 
 //export goOnChildWindowCreatedCallback
 func goOnChildWindowCreatedCallback(windowId C.int, window C.webview_t) {
@@ -180,8 +186,30 @@ func goOnChildWindowCreatedCallback(windowId C.int, window C.webview_t) {
 		}()
 	}
 }
+
+//export goOnChildWindowClosedCallback
+func goOnChildWindowClosedCallback(windowId C.int) {
+	goWindowId := int(windowId)
+	for _, item := range childWindowClosedCallbacks {
+		go func() {
+			item(goWindowId)
+		}()
+	}
+}
+
+/**
+ * Add callback for new opened child windows
+ */
 func AddChildWindowCallback(callback func(int, WebView)) {
 	childWindowCreatedCallbacks = append(childWindowCreatedCallbacks, callback)
+}
+
+func AddChildWindowOpenedCallback(callback func(int, WebView)) {
+	AddChildWindowCallback(callback)
+}
+
+func AddChildWindowClosedCallback(callback func(int)) {
+	childWindowClosedCallbacks = append(childWindowClosedCallbacks, callback)
 }
 
 func (w *webview) Destroy() {

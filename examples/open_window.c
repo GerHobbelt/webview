@@ -22,6 +22,9 @@ void child_window_callback(int window_id, webview_t window) {
   webview_set_size(window, 1024, 768, 0);
   webview_bind(window, "hello", hello, NULL);
 }
+void child_window_closed_callback(int window_id) {
+    printf("child window closed callback, window id=%d \n", window_id);
+}
 #ifdef _WIN32
 //int WINAPI WinMain(HINSTANCE hInt, HINSTANCE hPrevInst, LPSTR lpCmdLine,
 //                   int nCmdShow) {
@@ -33,7 +36,8 @@ int main() {
   w = webview_create(1, NULL);
   webview_set_title(w, "Basic Example");
   webview_set_size(w, 480, 320, WEBVIEW_HINT_NONE);
-  webview_set_child_window_callback(child_window_callback);
+  webview_set_child_window_opened_callback(child_window_callback);
+  webview_set_child_window_closed_callback(child_window_closed_callback);
   webview_bind(w, "openPopup", increment, &url_arg);
   webview_navigate(w, "http://127.0.0.1:3030/webview.html");
   webview_run(w);

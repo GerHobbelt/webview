@@ -101,6 +101,7 @@ WEBVIEW_API void webview_return(webview_t w, const char *seq, int status,
 WEBVIEW_API const webview_version_info_t *webview_version();
 
 WEBVIEW_API void
-webview_set_child_window_callback(cb_ext_child_window_created callback);
+webview_set_child_window_opened_callback(cb_ext_child_window_created callback);
 
+WEBVIEW_API void webview_set_child_window_closed_callback(cb_ext_child_window_closed callback);
 #endif

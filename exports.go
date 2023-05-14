@@ -9,6 +9,8 @@ package webview
 #include <stdint.h>
 
 extern void goOnChildWindowCreatedCallback(int, webview_t);
+extern void goOnChildWindowClosedCallback(int);
+
 extern void _webviewDispatchGoCallback(void*);
 extern void _webviewBindingGoCallback(webview_t, char *, char *,uintptr_t);
 
@@ -20,6 +22,9 @@ void c_webviewDispatchGoCallback(void* w) {
 }
 void c_webviewBindingGoCallback(webview_t w, char * c1, char * c2, uintptr_t p1){
 	_webviewBindingGoCallback(w, c1, c2, p1);
+}
+void c_goOnChildWindowClosedCallback(int windowId) {
+	goOnChildWindowClosedCallback(windowId);
 }
 */
 import "C"

@@ -67,5 +67,5 @@ typedef struct {
 
 typedef void *webview_t;
 typedef void (*cb_ext_child_window_created)(int window_id, void *window);
-
+typedef void  (*cb_ext_child_window_closed)(int window_id);
 #endif // !WEVIEW_MODELS
