@@ -20,11 +20,15 @@ func onChildWindowOpen(windowId int, w webview.WebView) {
 	fmt.Printf("onChildWindowOpen window id is %d, view is %v \n", windowId, w)
 	w.SetSize(1024, 768, webview.HintNone)
 }
+func onChildWindowClosed(windowId int) {
+    fmt.Printf("Window id=%d just closed\n", windowId)
+}
 func hello() {
 	fmt.Println("Hello from golang")
 }
 func main() {
 	webview.AddChildWindowCallback(onChildWindowOpen)
+    webview.AddChildWindowClosedCallback(onChildWindowClosed)
 	w := webview.New(true)
 	defer w.Destroy()
 	w.SetTitle("Basic Example")
