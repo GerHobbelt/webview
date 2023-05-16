@@ -1,0 +1,17 @@
+<html charset="utf-8">
+    <head>
+        <title>WebView::Child page</title>
+    </head>
+    <body>
+        <p>Child page</p>
+        <a href="#" onclick="hello();">Call hello method</a>
+        <script>
+            function hello() {
+                webviewNativeCall("hello", "from", "js", new Date().toString());
+            }
+            function callByNative() {
+                console.info('Javasript code called');
+            }
+        </script>
+    </body>
+</html>

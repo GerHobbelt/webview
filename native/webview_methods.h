@@ -100,8 +100,11 @@ WEBVIEW_API void webview_return(webview_t w, const char *seq, int status,
 // @since 0.10
 WEBVIEW_API const webview_version_info_t *webview_version();
 
-WEBVIEW_API void
-webview_set_child_window_opened_callback(cb_ext_child_window_created callback);
+WEBVIEW_API void webview_set_child_window_opened_callback(cb_ext_child_window_created callback);
 
 WEBVIEW_API void webview_set_child_window_closed_callback(cb_ext_child_window_closed callback);
+
+// bind was not working for child window, but a native c binding is still working, use this method to bind method invoke in child window
+WEBVIEW_API void webview_set_child_window_native_method_invoke_callback(webview_t w, cb_native_method_invoke callback);
+
 #endif

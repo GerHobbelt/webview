@@ -20,6 +20,7 @@ package webview
 // exported mtehods from golang
 extern void c_webviewDispatchGoCallback(void* w);
 extern void c_webviewBindingGoCallback(webview_t w, char * c1, char * c2, uintptr_t p1);
+extern char* c_goWebviewNativeCallback(int window_id, char *args);
 
 extern void c_goOnChildWindowCreatedCallback(int window_id, webview_t window);
 extern void c_goOnChildWindowClosedCallback(int window_id);
@@ -28,6 +29,7 @@ import "C"
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"runtime"
 	"sync"
@@ -39,9 +41,9 @@ func BindCallbacks() {
 	c_webviewBindingGoCallback := C._webviewBindingGoCallback_t(C.c_webviewBindingGoCallback)
 	c_goOnChildWindowCreatedCallback := C.cb_ext_child_window_created(C.c_goOnChildWindowCreatedCallback)
 	c_goOnChildWindowClosedCallback := C.cb_ext_child_window_closed(C.c_goOnChildWindowClosedCallback)
+
 	C.set_webviewDispatchGoCallback(c_webviewDispatchGoCallback)
 	C.set_webviewBindingGoCallback(c_webviewBindingGoCallback)
-
 	C.webview_set_child_window_opened_callback(c_goOnChildWindowCreatedCallback)
 	C.webview_set_child_window_closed_callback(c_goOnChildWindowClosedCallback)
 }
@@ -134,6 +136,8 @@ type WebView interface {
 	// f must be a function
 	// f must return either value and error or just error
 	Bind(name string, f interface{}) error
+
+	EnableNativeMethodInvoke()
 }
 
 type webview struct {
@@ -170,11 +174,16 @@ func NewWindow(debug bool, window unsafe.Pointer) WebView {
 	if res == nil {
 		return nil
 	}
-	return &webview{w: res}
+	c_goWebviewNativeCallback := C.cb_native_method_invoke(C.c_goWebviewNativeCallback)
+	C.webview_set_child_window_native_method_invoke_callback(res, c_goWebviewNativeCallback)
+	result := &webview{w: res}
+	result.Bind("webviewNativeCall", goWebviewNativeCallback)
+	return result
 }
 
 var childWindowCreatedCallbacks []func(int, WebView)
 var childWindowClosedCallbacks []func(int)
+var childWindowNativeCallbacks []func(int, string) (bool, string)
 
 //export goOnChildWindowCreatedCallback
 func goOnChildWindowCreatedCallback(windowId C.int, window C.webview_t) {
@@ -210,6 +219,9 @@ func AddChildWindowOpenedCallback(callback func(int, WebView)) {
 
 func AddChildWindowClosedCallback(callback func(int)) {
 	childWindowClosedCallbacks = append(childWindowClosedCallbacks, callback)
+}
+func AddNativeMethodInvoke(callback func(int, string) (bool, string)) {
+	childWindowNativeCallbacks = append(childWindowNativeCallbacks, callback)
 }
 
 func (w *webview) Destroy() {
@@ -313,6 +325,26 @@ func _webviewBindingGoCallback(w C.webview_t, id *C.char, req *C.char, index uin
 	C.webview_return(w, id, C.int(status), s)
 }
 
+// for c ref
+//
+//export _goWebviewNativeCallback
+func _goWebviewNativeCallback(windowId C.int, args *C.char) *C.char {
+	return goWebviewNativeCallback(int(windowId), C.GoString(args))
+}
+
+// for golang binding
+func goWebviewNativeCallback(windowId int, args string) *C.char {
+	fmt.Printf("goWebviewNativeCallback windowId = %d args=%s\n", windowId, args)
+	var result = ""
+	for _, item := range childWindowNativeCallbacks {
+		ok, methodReturn := item(windowId, args)
+		if ok {
+			result = methodReturn
+		}
+	}
+	cResult := C.CString(result)
+	return cResult
+}
 func (w *webview) Bind(name string, f interface{}) error {
 	v := reflect.ValueOf(f)
 	// f must be a function
@@ -386,4 +418,8 @@ func (w *webview) Bind(name string, f interface{}) error {
 	defer C.free(unsafe.Pointer(cname))
 	C.CgoWebViewBind(w.w, cname, C.uintptr_t(index))
 	return nil
+}
+func (w *webview) EnableNativeMethodInvoke() {
+	c_goWebviewNativeCallback := C.cb_native_method_invoke(C.c_goWebviewNativeCallback)
+	C.webview_set_child_window_native_method_invoke_callback(w.w, c_goWebviewNativeCallback)
 }

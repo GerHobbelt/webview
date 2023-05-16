@@ -78,6 +78,7 @@ extern "C" {
 
 #include <cstring>
 
+
 namespace webview {
 
 using dispatch_fn_t = std::function<void()>;
@@ -919,7 +920,8 @@ using browser_engine = detail::cocoa_wkwebview_engine;
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "version.lib")
 #endif
-
+#define UNUSED(x) (void)x
+void webview_native_callback(const char *seq, const char *req, void *args);
 namespace webview {
 
 #ifndef WINDOW_ID_PARAM_PREFIX
@@ -1970,6 +1972,7 @@ private:
 
 class win32_edge_engine: public webview_provider {
 public:
+  virtual cb_native_method_invoke get_native_method_invoke_callback() = 0;
   win32_edge_engine(bool debug, void *window, int is_main = 1, int lazy = 0)
       : main_window_flag(is_main), debug_flag(debug ? 1 : 0) {
       debug_logf("win32_edge_engine constructor entry\n");
@@ -2215,11 +2218,17 @@ public:
     this->m_webview2_on_webview_first_inited = webview_first_inited;
   }
   void after_window_opened() { 
+    if (window_open_called) {
+      debug_logf("after_window_opened, window_open callback was already called\n");
+      return;
+    }
+    window_open_called = true;
     auto ext_callback = webview_provider::get_cb_ext_child_window_created();
     debug_logf("child window opened, trying to invoke callback %p webview=%p \n", ext_callback, this->m_webview);
     if (ext_callback) {
       ext_callback(this->get_window_id(), this);
     }
+    webview_bind(this, "webviewNativeCall", webview_native_callback, this);
   }
   /*
   * Let external code to do some setup
@@ -2407,6 +2416,7 @@ public:
   int keep_running_event_thread = 1;
   bool embed_latter_job_called = 0;
   bool embed_latter_job_needed = 0;
+  bool window_open_called = 0;
 };
 
 } // namespace detail
@@ -2503,8 +2513,27 @@ public:
       }
     });
   }
+  void set_cb_native_method_invoke(cb_native_method_invoke callback) {
+      this->m_cb_native_method_invoke = callback;
+  }
+  cb_native_method_invoke get_native_method_invoke_callback() {
+      return this->m_cb_native_method_invoke;
+  }
+  void invoke_native_method(const char *seq, const char *req) {
+      debug_logf("invoke_native_method seq=%s req=%s\n", (char *)seq, (char *)req);
+      this->invoke_native_method_in_thread((char*)seq, (char*)req);
+  }
 
 private:
+  void invoke_native_method_in_thread(char *seq, char *req) {
+      if (!m_cb_native_method_invoke) {
+          resolve(seq, 0, "");
+      }else{
+        debug_logf("invoke_native_method_in_thread seq=%s req=%s\n", (char*)seq, (char*)req);
+        auto result = m_cb_native_method_invoke(this->get_window_id(), (char *)req);
+        resolve((char *)seq, 0, result);
+      }
+  }
   void on_message(const std::string &msg) {
     auto seq = detail::json_parse(msg, "id", 0);
     auto name = detail::json_parse(msg, "method", 0);
@@ -2518,6 +2547,7 @@ private:
   }
 
   std::map<std::string, binding_ctx_t> bindings;
+  cb_native_method_invoke m_cb_native_method_invoke = nullptr;
 };
 
 webview_window_t create_new_webview(bool debug, void* window, 
@@ -2628,6 +2658,15 @@ WEBVIEW_API void webview_set_child_window_closed_callback(cb_ext_child_window_cl
     webview::webview_provider::set_cb_ext_child_window_closed(callback);
 }
 
+WEBVIEW_API void webview_set_child_window_native_method_invoke_callback(webview_t w, cb_native_method_invoke callback) {  
+  static_cast<webview::webview *>(w)->set_cb_native_method_invoke(callback);
+}
+void webview_native_callback(const char *seq, const char *req, void *args) {
+    debug_logf("Calling webview_native_callback[%s]: %s\n", (char *) seq, (char *) req);
+    UNUSED(req);
+    webview::webview *window = static_cast<webview::webview *>(args);
+    window->invoke_native_method(seq, req);
+}
 #endif /* WEBVIEW_HEADER */
 #endif /* __cplusplus */
 #endif /* WEBVIEW_H */

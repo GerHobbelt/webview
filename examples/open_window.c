@@ -14,7 +14,7 @@ void increment(const char *seq, const char *req, void *arg) {
 }
 void hello(const char *seq, const char *req, void *arg) { 
 	UNUSED(req);
-	printf("hello called\n");
+	printf("hello called with args: '%s'\n", req);
 	webview_return(w, seq, 0, "");
 }
 void child_window_callback(int window_id, webview_t window) {
