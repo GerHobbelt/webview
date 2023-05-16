@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-
+    "time"
 	"github.com/ColinZou/webview"
 )
 
@@ -22,6 +22,14 @@ func onChildWindowOpen(windowId int, w webview.WebView) {
 	w.EnableNativeMethodInvoke()
 	fmt.Printf("onChildWindowOpen window id is %d, view is %v \n", windowId, w)
 	w.SetSize(1024, 768, webview.HintNone)
+	go func() {
+		fmt.Println("hide window latter")
+		time.Sleep(time.Second * 2)
+		w.HideWindow()
+		fmt.Println("show window latter")
+		time.Sleep(time.Second * 2)
+		w.ShowWindow()
+	}()
 }
 func onChildWindowClosed(windowId int) {
 	fmt.Printf("Window id=%d just closed\n", windowId)

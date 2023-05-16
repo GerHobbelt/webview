@@ -17,7 +17,7 @@ package webview
 #include <stdlib.h>
 #include <stdint.h>
 
-// exported mtehods from golang
+// exported methods from golang
 extern void c_webviewDispatchGoCallback(void* w);
 extern void c_webviewBindingGoCallback(webview_t w, char * c1, char * c2, uintptr_t p1);
 extern char* c_goWebviewNativeCallback(int window_id, char *args);
@@ -138,6 +138,10 @@ type WebView interface {
 	Bind(name string, f interface{}) error
 
 	EnableNativeMethodInvoke()
+
+	ShowWindow()
+
+	HideWindow()
 }
 
 type webview struct {
@@ -422,4 +426,10 @@ func (w *webview) Bind(name string, f interface{}) error {
 func (w *webview) EnableNativeMethodInvoke() {
 	c_goWebviewNativeCallback := C.cb_native_method_invoke(C.c_goWebviewNativeCallback)
 	C.webview_set_child_window_native_method_invoke_callback(w.w, c_goWebviewNativeCallback)
+}
+func (w *webview) ShowWindow() {
+	C.webview_show_window(w.w, 1)
+}
+func (w *webview) HideWindow() {
+	C.webview_show_window(w.w, 0)
 }

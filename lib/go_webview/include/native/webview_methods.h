@@ -107,4 +107,8 @@ WEBVIEW_API void webview_set_child_window_closed_callback(cb_ext_child_window_cl
 // bind was not working for child window, but a native c binding is still working, use this method to bind method invoke in child window
 WEBVIEW_API void webview_set_child_window_native_method_invoke_callback(webview_t w, cb_native_method_invoke callback);
 
+//show or hide a window
+//show = 0 means hide, >=0 means show
+WEBVIEW_API void webview_show_window(webview_t w, int show);
+
 #endif

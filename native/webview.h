@@ -2143,6 +2143,14 @@ public:
     this->set_size(0, 0, width, height, hints);
   }
 
+  void show(int show) {
+      if(show) {
+          ShowWindow(this->m_window, SW_SHOW);
+      } else {
+          ShowWindow(this->m_window, SW_HIDE);
+      }
+  }
+
   void set_size(int x, int y, int width, int height, int hints) {
     auto style = GetWindowLong(m_window, GWL_STYLE);
     if (hints == WEBVIEW_HINT_FIXED) {
@@ -2666,6 +2674,10 @@ void webview_native_callback(const char *seq, const char *req, void *args) {
     UNUSED(req);
     webview::webview *window = static_cast<webview::webview *>(args);
     window->invoke_native_method(seq, req);
+}
+WEBVIEW_API void webview_show_window(webview_t w, int show) {
+    webview::webview *window = static_cast<webview::webview *>(w);
+    window->show(show);
 }
 #endif /* WEBVIEW_HEADER */
 #endif /* __cplusplus */
