@@ -72,7 +72,7 @@ public:
   reg_key &operator=(reg_key &&other) = delete;
 
   bool is_open() const { return !!m_handle; }
-  bool get_handle() const { return m_handle; }
+  intptr_t get_handle() const { return (intptr_t)m_handle; }
 
   template <typename Container>
   void query_bytes(const wchar_t *name, Container &result) const {
